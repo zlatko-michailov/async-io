@@ -1,4 +1,4 @@
-package org.michailov.concurrent.test;
+package org.michailov.async.io.test;
 
 import java.io.*;
 import java.nio.charset.*;
@@ -7,7 +7,7 @@ import java.util.concurrent.*;
 class InputStreamSimulator extends InputStream {
     
     static final String CONTENT = 
-            "Добри дошли в очарователния свят на асинхронното програмиране! " +
+            "Добри дошли в очарователни�? �?в�?т на а�?инхронното програмиране! " +
             "Welcome to the exciting world of asynchronous programming! ";
     static final String CHARSET_NAME = "UTF-8";
     static final byte[] CONTENT_BYTES = CONTENT.getBytes(Charset.forName(CHARSET_NAME));

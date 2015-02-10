@@ -1,4 +1,4 @@
-package org.michailov.concurrent;
+package org.michailov.async.io;
 
 import java.io.*;
 import java.util.concurrent.*;
@@ -8,7 +8,8 @@ import java.util.concurrent.*;
  *
  */
 public class AsyncByteStreamReader {
-    private static final long INFINITE = -1;
+    
+    private static final long TIMEOUT_INFINITE = -1;
     
     private final InputStream _stream;
     private State _state;
@@ -22,11 +23,11 @@ public class AsyncByteStreamReader {
     }
 
     public CompletableFuture<Integer> readAsync(byte[] buff, int offset, int length) {
-        return readAsync(buff, offset, length, CompleteWhen.AVAILABLE, INFINITE, TimeUnit.MILLISECONDS);
+        return readAsync(buff, offset, length, CompleteWhen.AVAILABLE, TIMEOUT_INFINITE, TimeUnit.MILLISECONDS);
     }
     
     public CompletableFuture<Integer> readAsync(byte[] buff, int offset, int length, CompleteWhen completeWhen) {
-        return readAsync(buff, offset, length, completeWhen, INFINITE, TimeUnit.MILLISECONDS);
+        return readAsync(buff, offset, length, completeWhen, TIMEOUT_INFINITE, TimeUnit.MILLISECONDS);
     }
     
     public CompletableFuture<Integer> readAsync(byte[] buff, int offset, int length, CompleteWhen completeWhen, long timeout, TimeUnit unit) {

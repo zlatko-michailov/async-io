@@ -1,4 +1,4 @@
-package org.michailov.concurrent.test;
+package org.michailov.async.io.test;
 
 import java.io.*;
 import java.util.concurrent.*;
