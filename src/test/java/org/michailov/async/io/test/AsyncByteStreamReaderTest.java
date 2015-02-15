@@ -19,16 +19,42 @@ public class AsyncByteStreamReaderTest {
         final CompleteWhen COMPLETE_WHEN = CompleteWhen.AVAILABLE;
         
         System.out.println("\n testReadAsyncAvailable {");
-        ReadAsyncState state = new ReadAsyncState();
-        state.simulator = new InputStreamSimulator(STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, TimeUnit.MILLISECONDS);
-        state.reader = new AsyncByteStreamReader(state.simulator);
-        state.streamLength = STREAM_LENGTH;
-        state.streamIndex = 0;
-        state.buff = new byte[BUFF_LENGTH];
-        state.completeWhen = COMPLETE_WHEN;
-        state.testFuture = new CompletableFuture();
         
-        CompletableFuture<Integer> future = state.reader.readAsync(state.buff, 0, state.buff.length, COMPLETE_WHEN);
+        testReadAsync(STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, BUFF_LENGTH, COMPLETE_WHEN);
+        
+        System.out.println("} // testReadAsyncAvailable");
+    }
+    
+    @Test
+    public void testReadAsyncFull() {
+        final int STREAM_LENGTH = 100;
+        final int CHUNK_LENGTH = 7;
+        final int CHUNK_DELAY_MILLIS = 100;
+        final int BUFF_LENGTH = 19;
+        final CompleteWhen COMPLETE_WHEN = CompleteWhen.FULL;
+        
+        System.out.println("\n testReadAsyncFull {");
+        
+        testReadAsync(STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, BUFF_LENGTH, COMPLETE_WHEN);
+        
+        System.out.println("} // testReadAsyncFull");
+    }
+
+    @Test
+    public void testReadAsyncTimeout() {
+    }
+    
+    private void testReadAsync(int streamLength, int chunkLength, int chunkDelayMillis, int buffLength, CompleteWhen completeWhen) {
+        ReadAsyncState state = new ReadAsyncState();
+        state.simulator = new InputStreamSimulator(streamLength, chunkLength, chunkDelayMillis, TimeUnit.MILLISECONDS);
+        state.reader = new AsyncByteStreamReader(state.simulator);
+        state.streamLength = streamLength;
+        state.streamIndex = 0;
+        state.buff = new byte[buffLength];
+        state.completeWhen = completeWhen;
+        state.testFuture = new CompletableFuture<Void>();
+        
+        CompletableFuture<Integer> future = state.reader.readAsync(state.buff, 0, state.buff.length, completeWhen);
         future.whenCompleteAsync((res, th) -> continueReadAsync(res, th, state));
         
         try {
@@ -38,10 +64,8 @@ public class AsyncByteStreamReaderTest {
             ex.printStackTrace(System.out);
             Assert.fail();
         }
-        
-        System.out.println("} // testReadAsyncAvailable");
     }
-    
+
     private static void continueReadAsync(Integer result, Throwable throwable, ReadAsyncState state) {
         if (result != null) {
             int n = result.intValue();
@@ -80,14 +104,6 @@ public class AsyncByteStreamReaderTest {
             state.testFuture.completeExceptionally(throwable);
         }
     };
-    
-    @Test
-    public void testReadAsyncFull() {
-    }
-
-    @Test
-    public void testReadAsyncTimeout() {
-    }
     
     private class ReadAsyncState {
         InputStreamSimulator simulator;

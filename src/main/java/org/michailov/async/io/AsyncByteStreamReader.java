@@ -9,13 +9,16 @@ import java.util.concurrent.*;
  */
 public class AsyncByteStreamReader {
     
+    private static final int EOF = -1;
     private static final long TIMEOUT_INFINITE = -1;
     
     private final InputStream _stream;
+    private EOFState _eofState;
     private State _state;
     
     public AsyncByteStreamReader(InputStream stream) {
         _stream = stream;
+        _eofState = EOFState.NOT_REACHED;
     }
     
     public InputStream getStream() {
@@ -49,6 +52,15 @@ public class AsyncByteStreamReader {
             throw new IllegalArgumentException(message);
         }
         
+        if (_eofState == EOFState.REPORTED) {
+            throw new IllegalStateException("Attempting to read past the end of stream.");
+        }
+        
+        if (_eofState == EOFState.RECEIVED) {
+            _eofState = EOFState.REPORTED;
+            return CompletableFuture.completedFuture(Integer.valueOf(EOF));
+        }
+        
         if (length == 0) {
             return CompletableFuture.completedFuture(Integer.valueOf(0));
         }
@@ -67,13 +79,24 @@ public class AsyncByteStreamReader {
                 int target = Math.min(available, _state.remaining);
                 int actual = _stream.read(_state.buff, _state.offset, target);
                 if (actual != 0) {
-                    _state.offset += actual;
-                    _state.remaining -= actual;
-                    _state.total += actual;
+                    if (actual > 0) {
+                        _state.offset += actual;
+                        _state.remaining -= actual;
+                        _state.total += actual;
+                    }
                     
-                    if (_state.completeWhen == CompleteWhen.AVAILABLE || (_state.completeWhen == CompleteWhen.FULL && _state.remaining == 0)) {
+                    if (actual == EOF) {
+                        if (_state.total > 0) {
+                            _eofState = EOFState.RECEIVED;
+                        }
+                        else {
+                            _eofState = EOFState.REPORTED;
+                        }
+                    }
+                    
+                    if (actual == EOF || _state.completeWhen == CompleteWhen.AVAILABLE || (_state.completeWhen == CompleteWhen.FULL && _state.remaining == 0)) {
                         CompletableFuture<Integer> future = _state.future;
-                        int total = _state.total;
+                        int total = _state.total > 0 ? _state.total : EOF;
                         _state = null;
                         
                         future.complete(Integer.valueOf(total));
@@ -105,6 +128,12 @@ public class AsyncByteStreamReader {
     public enum CompleteWhen {
         AVAILABLE,
         FULL,
+    }
+    
+    private enum EOFState {
+        NOT_REACHED,
+        RECEIVED,
+        REPORTED,
     }
     
     private class State {
