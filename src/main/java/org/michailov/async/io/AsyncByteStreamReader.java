@@ -44,8 +44,8 @@ public class AsyncByteStreamReader {
             throw new IllegalArgumentException(message);
         }
         
-        if (length < 0 || buff.length <= offset + length) {
-            String message = String.format("Argument length (%1$d) must be between 0 and %2$d, or the length of buff must be increased.", offset, buff.length - 1 - offset);
+        if (length < 0 || buff.length < offset + length) {
+            String message = String.format("Argument length (%1$d) must be between 0 and %2$d, or the length of buff must be increased.", length, buff.length - 1 - offset);
             throw new IllegalArgumentException(message);
         }
         
@@ -54,9 +54,10 @@ public class AsyncByteStreamReader {
         }
 
         _state = new State(buff, offset, length, completeWhen, unit.toMillis(timeout));
+        CompletableFuture<Integer> future = _state.future;
         submitReadChain();
         
-        return _state.future;
+        return future;
     }
     
     private void submitReadChain() {
@@ -65,7 +66,7 @@ public class AsyncByteStreamReader {
             if (available > 0) {
                 int target = Math.min(available, _state.remaining);
                 int actual = _stream.read(_state.buff, _state.offset, target);
-                if (actual > 0) {
+                if (actual != 0) {
                     _state.offset += actual;
                     _state.remaining -= actual;
                     _state.total += actual;
@@ -76,6 +77,7 @@ public class AsyncByteStreamReader {
                         _state = null;
                         
                         future.complete(Integer.valueOf(total));
+                        return;
                     }
                 }
             }

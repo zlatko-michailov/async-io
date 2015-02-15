@@ -3,11 +3,11 @@ apply plugin: 'java'
 
 def specTitle     = 'Async I/O'
 def specVersion   = '0.1'
-def specVendor    = 'Zlatko Michailov <zlatko@michailov.org>'
+def specVendor    = 'Zlatko Michailov <zlatko+async@michailov.org>'
 def implShortName = 'org.michailov.async.io'
 def implTitle     = 'Async I/O'
 def implVersion   = '0.1'
-def implVendor    = 'Zlatko Michailov <zlatko@michailov.org>'
+def implVendor    = 'Zlatko Michailov <zlatko+async@michailov.org>'
 def projectGroup  = 'michailov'
 def javaVersion   = '1.8'
 

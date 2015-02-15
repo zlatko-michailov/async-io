@@ -7,7 +7,7 @@ import java.util.concurrent.*;
 class InputStreamSimulator extends InputStream {
     
     static final String CONTENT = 
-            "Добри дошли в очарователни�? �?в�?т на а�?инхронното програмиране! " +
+            "Добри дошли в очарователни�? �?в�?т на а�?инхронното програмиране! " +
             "Welcome to the exciting world of asynchronous programming! ";
     static final String CHARSET_NAME = "UTF-8";
     static final byte[] CONTENT_BYTES = CONTENT.getBytes(Charset.forName(CHARSET_NAME));
@@ -42,6 +42,13 @@ class InputStreamSimulator extends InputStream {
             return 0;
         }
         
+        // If we've reached the end of the stream, there are no more bytes available.
+        // However, the caller hasn't gotten an EOF yet. 
+        // Lie to him to come and get the EOF.
+        if (_nextStreamIndex == _streamLength) {
+            return 1;
+        }
+        
         // If chunking is not enabled, the rest of the entire stream is available.
         if (_chunkLength <= 0) {
             return _streamLength - _nextStreamIndex;
@@ -59,9 +66,48 @@ class InputStreamSimulator extends InputStream {
     
     @Override
     public int read() throws IOException {
+        int r = readByte();
+        
+        // If we publicly return EOF, set the flag. 
+        if (r == EOF) {
+            _isEOF = true;
+        }
+        
+        return r;
+    }
+
+    @Override
+    public int read(byte[] b) throws IOException {
+        return read(b, 0, b.length);
+    }
+
+    @Override
+    public int read(byte[] b, int off, int len) throws IOException {
+        for (int i = 0; i < len; i++) {
+            int r = readByte();
+            
+            if (r == EOF) {
+                if (i == 0) {
+                    // We are publicly returning EOF. Set the flag.
+                    _isEOF = true;
+                    return EOF;
+                }
+                else {
+                    // If we reach EOF as part of a read, we'll return a smaller number than requested,
+                    // but we still haven't told the caller anything about EOF.
+                    return i;
+                }                    
+            }
+            
+            b[off + i] = (byte)r;
+        }
+        
+        return len;
+    }
+
+    private int readByte() throws IOException {
         // If we've reached the end of the stream, return EOF.
         if (_nextStreamIndex >= _streamLength) {
-            _isEOF = true;
             return EOF;
         }
         
@@ -92,26 +138,6 @@ class InputStreamSimulator extends InputStream {
 
         // Return the cached byte.
         return r;
-    }
-
-    @Override
-    public int read(byte[] b) throws IOException {
-        return read(b, 0, b.length);
-    }
-
-    @Override
-    public int read(byte[] b, int off, int len) throws IOException {
-        for (int i = 0; i < len; i++) {
-            int r = read();
-            
-            if (r == EOF) {
-                return i > 0 ? i : EOF;
-            }
-            
-            b[off + i] = (byte)r;
-        }
-        
-        return len;
     }
 
     private long getBlockingMillis() {

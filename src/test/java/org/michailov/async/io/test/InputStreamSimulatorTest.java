@@ -10,7 +10,7 @@ public class InputStreamSimulatorTest {
     public void testSimulatorReadBulk() {
         final int STREAM_LENGTH = 50;
         final int CHUNK_LENGTH = 6;
-        final int CHUNK_DELAY_MILLIS = 500;
+        final int CHUNK_DELAY_MILLIS = 200;
         final int BUFF_LENGTH = 7;
         
         System.out.println("\ntestSimulatorReadBulk {");
@@ -26,15 +26,19 @@ public class InputStreamSimulatorTest {
             int r = simulator.read(buff, 0, BUFF_LENGTH);
             
             while (r != -1) {
+                int ax;
                 totalRead += r;
 
                 // Reading less than BUFF_LENGTH means we've reached EOF.
+                // We'll be lied to to get the EOF.
                 if (r < BUFF_LENGTH) {
-                    break;
+                    ax = 1;
+                }
+                else {
+                    ax = (totalRead % CHUNK_LENGTH) == 0 ? 0 : CHUNK_LENGTH - (totalRead % CHUNK_LENGTH); 
                 }
                 
                 // Verify available.
-                int ax = (totalRead % CHUNK_LENGTH) == 0 ? 0 : CHUNK_LENGTH - (totalRead % CHUNK_LENGTH); 
                 a = simulator.available();
                 System.out.println(String.format("Available: %1$d = %2$d", ax, a));
                 Assert.assertEquals(ax, a);
@@ -64,7 +68,7 @@ public class InputStreamSimulatorTest {
     public void testSimulatorRead1() {
         final int STREAM_LENGTH = 20;
         final int CHUNK_LENGTH = 3;
-        final int CHUNK_DELAY_MILLIS = 500;
+        final int CHUNK_DELAY_MILLIS = 200;
         
         System.out.println("\ntestSimulatorRead1 {");
         InputStreamSimulator simulator = new InputStreamSimulator(STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, TimeUnit.MILLISECONDS);
@@ -81,8 +85,8 @@ public class InputStreamSimulatorTest {
 
             while (r != -1) {
                 // Verify each read byte.
-                System.out.println(String.format("[%1$d] Byte[%2$d]: %3$d = %4$d", System.currentTimeMillis() % 100000, i, InputStreamSimulator.CONTENT_BYTES[i], r));
-                Assert.assertEquals(InputStreamSimulator.CONTENT_BYTES[i], r);
+                System.out.println(String.format("[%1$d] Byte[%2$d]: %3$d = %4$d", System.currentTimeMillis() % 100000, i, InputStreamSimulator.CONTENT_BYTES[i % InputStreamSimulator.CONTENT_BYTES_LENGTH], r));
+                Assert.assertEquals(InputStreamSimulator.CONTENT_BYTES[i % InputStreamSimulator.CONTENT_BYTES_LENGTH], r);
                 
                 // Verify available.
                 a = simulator.available();
