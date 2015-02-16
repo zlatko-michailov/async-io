@@ -1,50 +1,60 @@
 package org.michailov.async.io.test;
 
-import java.io.*;
 import java.util.concurrent.*;
-import java.util.function.*;
-
 import org.junit.*;
 import org.michailov.async.io.*;
-import org.michailov.async.io.AsyncByteStreamReader.CompleteWhen;
 
 public class AsyncByteStreamReaderTest {
 
     @Test
-    public void testReadAsyncAvailable() {
+    public void testReadAsyncAvailable() throws Throwable {
         final int STREAM_LENGTH = 100;
         final int CHUNK_LENGTH = 7;
         final int CHUNK_DELAY_MILLIS = 100;
         final int BUFF_LENGTH = 19;
         final CompleteWhen COMPLETE_WHEN = CompleteWhen.AVAILABLE;
+        final long TIMEOUT_MILLIS = 10000;
         
         System.out.println("\n testReadAsyncAvailable {");
         
-        testReadAsync(STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, BUFF_LENGTH, COMPLETE_WHEN);
+        testReadAsync(STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, BUFF_LENGTH, COMPLETE_WHEN, TIMEOUT_MILLIS);
         
         System.out.println("} // testReadAsyncAvailable");
     }
     
     @Test
-    public void testReadAsyncFull() {
+    public void testReadAsyncFull() throws Throwable {
         final int STREAM_LENGTH = 100;
         final int CHUNK_LENGTH = 7;
         final int CHUNK_DELAY_MILLIS = 100;
         final int BUFF_LENGTH = 19;
         final CompleteWhen COMPLETE_WHEN = CompleteWhen.FULL;
+        final long TIMEOUT_MILLIS = 10000;
         
         System.out.println("\n testReadAsyncFull {");
         
-        testReadAsync(STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, BUFF_LENGTH, COMPLETE_WHEN);
+        testReadAsync(STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, BUFF_LENGTH, COMPLETE_WHEN, TIMEOUT_MILLIS);
         
         System.out.println("} // testReadAsyncFull");
     }
 
-    @Test
-    public void testReadAsyncTimeout() {
+    @Test (expected = TimeoutException.class)
+    public void testReadAsyncTimeout() throws Throwable {
+        final int STREAM_LENGTH = 100;
+        final int CHUNK_LENGTH = 7;
+        final int CHUNK_DELAY_MILLIS = 100;
+        final int BUFF_LENGTH = 19;
+        final CompleteWhen COMPLETE_WHEN = CompleteWhen.FULL;
+        final long TIMEOUT_MILLIS = 100;
+        
+        System.out.println("\n testReadAsyncTimeout {");
+        
+        testReadAsync(STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, BUFF_LENGTH, COMPLETE_WHEN, TIMEOUT_MILLIS);
+        
+        System.out.println("} // testReadAsyncTimeout");
     }
     
-    private void testReadAsync(int streamLength, int chunkLength, int chunkDelayMillis, int buffLength, CompleteWhen completeWhen) {
+    private void testReadAsync(int streamLength, int chunkLength, int chunkDelayMillis, int buffLength, CompleteWhen completeWhen, long timeoutMillis) throws Throwable {
         ReadAsyncState state = new ReadAsyncState();
         state.simulator = new InputStreamSimulator(streamLength, chunkLength, chunkDelayMillis, TimeUnit.MILLISECONDS);
         state.reader = new AsyncByteStreamReader(state.simulator);
@@ -54,15 +64,22 @@ public class AsyncByteStreamReaderTest {
         state.completeWhen = completeWhen;
         state.testFuture = new CompletableFuture<Void>();
         
-        CompletableFuture<Integer> future = state.reader.readAsync(state.buff, 0, state.buff.length, completeWhen);
+        // Read async
+        CompletableFuture<Integer> future = state.reader.readAsync(state.buff, 0, state.buff.length, completeWhen, timeoutMillis, TimeUnit.MILLISECONDS);
         future.whenCompleteAsync((res, th) -> continueReadAsync(res, th, state));
         
+        // Await completion
         try {
             state.testFuture.get();
         }
         catch (ExecutionException | InterruptedException ex) {
-            ex.printStackTrace(System.out);
-            Assert.fail();
+            ex.printStackTrace();
+            
+            // If there is a cause, re-throw it.
+            Throwable cause = ex.getCause();
+            if (cause != null) {
+                throw cause;
+            }
         }
     }
 

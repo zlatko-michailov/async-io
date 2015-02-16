@@ -57,7 +57,7 @@ public class InputStreamSimulatorTest {
             Assert.assertEquals(STREAM_LENGTH, totalRead);
         }
         catch (IOException ex) {
-            ex.printStackTrace(System.out);
+            ex.printStackTrace();
             Assert.fail();
         }
         
@@ -117,7 +117,7 @@ public class InputStreamSimulatorTest {
             Assert.assertEquals(STREAM_LENGTH, i);
         }
         catch (IOException ex) {
-            ex.printStackTrace(System.out);
+            ex.printStackTrace();
             Assert.fail();
         }
         
