@@ -11,12 +11,14 @@ import java.util.concurrent.*;
  * If there aren't, it schedules a future to do that.
  * <p>
  * The stream bytes are read into a ByteRingBuffer. 
- * <p> 
+ * <p>
  * Note: The caller is responsible for opening and closing the stream as needed. 
  * 
- * @see     java.io.InputStream, java.util.concurrent.CompletableFuture
+ * @see     java.io.InputStream
+ * @see     java.util.concurrent.CompletableFuture
+ * @see     ByteRingBuffer
  * 
- * @author Zlatko Michailov <zlatko+async@michailov.org>
+ * @author  Zlatko Michailov
  */
 public class AsyncByteStreamReader {
     
@@ -39,7 +41,7 @@ public class AsyncByteStreamReader {
      * 
      * @param   inputStream     An InputStream to read from.
      * @param   byteRingBuffer  A ByteRingBuffer to write to.
-     * @param   asyncOptions    AsyncOptions to use for the async calls. 
+     * @param   asyncOptions    AsyncOptions to use for all async operations. 
      */
     public AsyncByteStreamReader(InputStream inputStream, ByteRingBuffer byteRingBuffer, AsyncOptions asyncOptions) {
         ensureArgumentNotNull("inputStream", inputStream);
@@ -62,27 +64,45 @@ public class AsyncByteStreamReader {
         return _inputStream;
     }
     
+    /**
+     * Returns a future that completes when the reader reaches the end of the stream.
+     * 
+     * @return  A future that completes when the reader reaches the end of the stream..
+     */
     public CompletableFuture<Void> getEOF() {
         return _eof;
     }
     
     /**
-     * Returns the attached ByteRingBuffer.
+     * Returns the attached ring buffer where bytes will be written.
      * 
-     * @return  The attached ByteRingBUffer.
+     * @return  The attached ring buffer where bytes will be written.
      */
     public ByteRingBuffer getByteRingBuffer() {
         return _byteRingBuffer;
     }
 
+    /**
+     * Starts a loop that read bytes from the stream and writes them into the ring buffer.
+     * 
+     * @return  A future that completes when the loop is finished either due to reaching EOF or due to an exception.
+     */
     public CompletableFuture<Void> startReadingLoopAsync() {
         return startRead(LOOP);
     }
     
+    /**
+     * Reads bytes from the stream into the ring buffer. There is no guarantee how many bytes will be read.
+     * 
+     * @return  A future that completes when either some bytes have been read from the stream, EOF has been reached, or an exception has occurred.
+     */
     public CompletableFuture<Void> readAsync() {
         return startRead(NOT_LOOP);
     }
     
+    /**
+     * Starts a read operation - ensures correct state for the operation.
+     */
     private CompletableFuture<Void> startRead(boolean isLoop) {
         ensureReadableState();
         
@@ -100,6 +120,9 @@ public class AsyncByteStreamReader {
         return future;
     }
     
+    /**
+     * Attempts to read sync or submits a read operation.
+     */
     private void submitRead(boolean isLoop) {
         // Attempt to read sync.
         boolean isDone = readSync(isLoop);
@@ -117,6 +140,11 @@ public class AsyncByteStreamReader {
         }
     }
     
+    /**
+     * Attempts to read sync if there are available bytes.
+     * 
+     * @return  true if the operation is complete; false if a new attempt should be queued up.
+     */
     private boolean readSync(boolean isLoop) {
         try {
             // Check what's available from the stream.
@@ -173,6 +201,11 @@ public class AsyncByteStreamReader {
         return false;
     }
     
+    /**
+     * Checks if the operation has timed out..
+     * 
+     * @return  true if the operation is complete; false if a new attempt should be queued up.
+     */
     private boolean hasTimedOut(boolean isLoop) {
         if (_asyncOptions.timeout >= 0) {
             long currentTimeMillis = System.currentTimeMillis();
@@ -196,6 +229,9 @@ public class AsyncByteStreamReader {
         return false;
     }
     
+    /**
+     * Ensures the state is good for starting a new read operation.
+     */
     private void ensureReadableState() {
         // There should be no outstanding operation on this reader.
         if (_readFuture != null) {
@@ -208,6 +244,9 @@ public class AsyncByteStreamReader {
         }
     }
 
+    /**
+     * Helper that check arguments for null.
+     */
     private static void ensureArgumentNotNull(String argName, Object argValue) {
         if (argValue == null) {
             throw new IllegalArgumentException(String.format("Argument %1$s may not be null.", argName));
