@@ -1,78 +1,103 @@
 package org.michailov.async.io.test;
 
 import java.util.concurrent.*;
+
 import org.junit.*;
 import org.michailov.async.io.*;
 
 public class AsyncByteStreamReaderTest {
 
     @Test
-    public void testReadAsyncAvailable() throws Throwable {
+    public void testReadAsync() throws Throwable {
+        final boolean NOT_LOOP = false;
         final int STREAM_LENGTH = 100;
         final int CHUNK_LENGTH = 7;
         final int CHUNK_DELAY_MILLIS = 100;
         final int BUFF_LENGTH = 19;
-        final CompleteWhen COMPLETE_WHEN = CompleteWhen.AVAILABLE;
         final long TIMEOUT_MILLIS = 10000;
         
-        System.out.println("\n testReadAsyncAvailable {");
+        System.out.println("\n testReadAsync {");
         
-        testReadAsync(STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, BUFF_LENGTH, COMPLETE_WHEN, TIMEOUT_MILLIS);
+        testReadAsync(NOT_LOOP, STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, BUFF_LENGTH, TIMEOUT_MILLIS);
         
-        System.out.println("} // testReadAsyncAvailable");
+        System.out.println("} // testReadAsync");
     }
     
-    @Test
-    public void testReadAsyncFull() throws Throwable {
-        final int STREAM_LENGTH = 100;
-        final int CHUNK_LENGTH = 7;
-        final int CHUNK_DELAY_MILLIS = 100;
-        final int BUFF_LENGTH = 19;
-        final CompleteWhen COMPLETE_WHEN = CompleteWhen.FULL;
-        final long TIMEOUT_MILLIS = 10000;
-        
-        System.out.println("\n testReadAsyncFull {");
-        
-        testReadAsync(STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, BUFF_LENGTH, COMPLETE_WHEN, TIMEOUT_MILLIS);
-        
-        System.out.println("} // testReadAsyncFull");
-    }
-
     @Test (expected = TimeoutException.class)
     public void testReadAsyncTimeout() throws Throwable {
+        final boolean NOT_LOOP = false;
         final int STREAM_LENGTH = 100;
         final int CHUNK_LENGTH = 7;
-        final int CHUNK_DELAY_MILLIS = 100;
+        final int CHUNK_DELAY_MILLIS = 200;
         final int BUFF_LENGTH = 19;
-        final CompleteWhen COMPLETE_WHEN = CompleteWhen.FULL;
         final long TIMEOUT_MILLIS = 100;
         
         System.out.println("\n testReadAsyncTimeout {");
         
-        testReadAsync(STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, BUFF_LENGTH, COMPLETE_WHEN, TIMEOUT_MILLIS);
+        testReadAsync(NOT_LOOP, STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, BUFF_LENGTH, TIMEOUT_MILLIS);
         
         System.out.println("} // testReadAsyncTimeout");
     }
     
-    private void testReadAsync(int streamLength, int chunkLength, int chunkDelayMillis, int buffLength, CompleteWhen completeWhen, long timeoutMillis) throws Throwable {
+    @Test
+    public void testStartReadingLoopAsync() throws Throwable {
+        final boolean LOOP = true;
+        final int STREAM_LENGTH = 100;
+        final int CHUNK_LENGTH = 7;
+        final int CHUNK_DELAY_MILLIS = 100;
+        final int BUFF_LENGTH = 19;
+        final long TIMEOUT_MILLIS = 10000;
+        
+        System.out.println("\n testStartReadingLoopAsync {");
+        
+        testReadAsync(LOOP, STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, BUFF_LENGTH, TIMEOUT_MILLIS);
+        
+        System.out.println("} // testStartReadingLoopAsync");
+    }
+
+    @Test (expected = TimeoutException.class)
+    public void testStartReadingLoopAsyncTimeout() throws Throwable {
+        final boolean LOOP = true;
+        final int STREAM_LENGTH = 100;
+        final int CHUNK_LENGTH = 7;
+        final int CHUNK_DELAY_MILLIS = 200;
+        final int BUFF_LENGTH = 19;
+        final long TIMEOUT_MILLIS = 100;
+        
+        System.out.println("\n testStartReadingLoopAsyncTimeout {");
+        
+        testReadAsync(LOOP, STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, BUFF_LENGTH, TIMEOUT_MILLIS);
+        
+        System.out.println("} // testStartReadingLoopAsyncTimeout");
+    }
+
+    private void testReadAsync(boolean isLoop, int streamLength, int chunkLength, int chunkDelayMillis, int buffLength, long timeoutMillis) throws Throwable {
         ReadAsyncState state = new ReadAsyncState();
+        state.asyncOptions = new AsyncOptions();
+        state.asyncOptions.timeout = timeoutMillis;
+        state.ringBuffer = new ByteRingBuffer(buffLength);
         state.simulator = new InputStreamSimulator(streamLength, chunkLength, chunkDelayMillis, TimeUnit.MILLISECONDS);
-        state.reader = new AsyncByteStreamReader(state.simulator);
+        state.reader = new AsyncByteStreamReader(state.simulator, state.ringBuffer, state.asyncOptions);
         state.streamLength = streamLength;
         state.streamIndex = 0;
-        state.buff = new byte[buffLength];
-        state.completeWhen = completeWhen;
         state.testFuture = new CompletableFuture<Void>();
         
-        // Read async
-        CompletableFuture<Integer> future = state.reader.readAsync(state.buff, 0, state.buff.length, completeWhen, timeoutMillis, TimeUnit.MILLISECONDS);
-        future.whenCompleteAsync((res, th) -> continueReadAsync(res, th, state));
+        CompletableFuture<Void> future;
+        if (isLoop) {
+            future = state.reader.startReadingLoopAsync();
+            ForkJoinPool.commonPool().execute(() -> verifyReadingLoopAsync(state));
+        }
+        else {
+            // Read async
+            future = state.reader.readAsync();
+            future.whenCompleteAsync((res, th) -> verifyReadAsync(res, th, state));
+        }
         
-        // Await completion
         try {
+            // Await completion
             state.testFuture.get();
         }
-        catch (ExecutionException | InterruptedException ex) {
+        catch (Exception ex) {
             ex.printStackTrace();
             
             // If there is a cause, re-throw it.
@@ -83,36 +108,14 @@ public class AsyncByteStreamReaderTest {
         }
     }
 
-    private static void continueReadAsync(Integer result, Throwable throwable, ReadAsyncState state) {
-        if (result != null) {
-            int n = result.intValue();
-            if (n != -1) {
-                // Verify result and buffer.
-                for (int i = 0; i < n; i++) {
-                    int bx = InputStreamSimulator.CONTENT_BYTES[(state.streamIndex + i) % InputStreamSimulator.CONTENT_BYTES_LENGTH];
-                    System.out.println(String.format("Byte[%1$d]: %2$d = %3$d", state.streamIndex + i, bx, state.buff[i]));
-                    if (bx != state.buff[i]) {
-                        state.testFuture.completeExceptionally(new Exception("Wrong byte!"));
-                        return;
-                    }
-                }
-                
+    private static void verifyReadAsync(Void result, Throwable throwable, ReadAsyncState state) {
+        if (throwable == null) {
+            // Verify the content in the ring buffer.
+            boolean isDone = verifyRingBuffer(state);
+            if (!isDone) {
                 // Continue reading async.
-                state.streamIndex += n;
-                CompletableFuture<Integer> future = state.reader.readAsync(state.buff, 0, state.buff.length, state.completeWhen);
-                future.whenCompleteAsync((res, th) -> continueReadAsync(res, th, state));
-            }
-            else {
-                // EOF
-                // Verify length.
-                System.out.println(String.format("Stream length: %1$d = %2$d", state.streamIndex, state.streamLength));
-                if (state.streamIndex != state.streamLength) {
-                    state.testFuture.completeExceptionally(new Exception("Wrong stream length!"));
-                    return;
-                }
-                
-                // Complete test.
-                state.testFuture.complete(null);
+                CompletableFuture<Void> future = state.reader.readAsync();
+                future.whenCompleteAsync((res, th) -> verifyReadAsync(res, th, state));
             }
         }
         else {
@@ -120,15 +123,62 @@ public class AsyncByteStreamReaderTest {
             throwable.printStackTrace(System.out);
             state.testFuture.completeExceptionally(throwable);
         }
-    };
+    }
+    
+    private static void verifyReadingLoopAsync(ReadAsyncState state) {
+        boolean isDone = verifyRingBuffer(state);
+        if (!isDone) {
+            ForkJoinPool.commonPool().execute(() -> verifyReadingLoopAsync(state));
+        }
+    }
+    
+    private static boolean verifyRingBuffer(ReadAsyncState state) {
+        while (state.ringBuffer.getAvailableToRead() > 0) {
+            int bx = InputStreamSimulator.CONTENT_BYTES[state.streamIndex % InputStreamSimulator.CONTENT_BYTES_LENGTH];
+            int ba = state.ringBuffer.read();
+            
+            System.out.println(String.format("Byte[%1$d]: %2$d = %3$d", state.streamIndex, bx, ba));
+            if (bx != ba) {
+                state.testFuture.completeExceptionally(new Exception("Wrong byte!"));
+                return true;
+            }
+            
+            state.streamIndex++;
+        }
+
+        CompletableFuture<Void> eof = state.reader.getEOF();
+        if (eof.isCompletedExceptionally()) {
+            // An exception has occurred. 
+            // Pass it to testFuture.
+            eof.whenComplete((res, th) -> {
+                    state.testFuture.completeExceptionally(th);
+                });
+            return true;
+        }
+        else if (eof.isDone()) {
+            // EOF
+            // Verify length.
+            System.out.println(String.format("Stream length: %1$d = %2$d", state.streamIndex, state.streamLength));
+            if (state.streamIndex != state.streamLength) {
+                state.testFuture.completeExceptionally(new Exception("Wrong stream length!"));
+                return true;
+            }
+            
+            // Complete test.
+            state.testFuture.complete(null);
+            return true;
+        }
+        
+        return false;
+    }
     
     private class ReadAsyncState {
+        AsyncOptions asyncOptions;
+        ByteRingBuffer ringBuffer;
         InputStreamSimulator simulator;
         AsyncByteStreamReader reader;
         int streamLength;
         int streamIndex;
-        byte[] buff;
-        CompleteWhen completeWhen;
         CompletableFuture<Void> testFuture;
     }
 

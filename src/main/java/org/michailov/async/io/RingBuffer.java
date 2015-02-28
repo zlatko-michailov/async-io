@@ -1,62 +1,81 @@
 package org.michailov.async.io;
 
-abstract class RingBuffer {
+public abstract class RingBuffer {
 
-    private final int _bufferLength;
-    private volatile int _readPosition;
-    private volatile int _writePosition;
+    private final long _bufferLength;
+    private volatile long _virtualReadPosition;
+    private volatile long _virtualWritePosition;
+    private volatile boolean _eof;
     
     protected RingBuffer(int bufferLength) {
         _bufferLength = bufferLength;
-        _readPosition = 0;
-        _writePosition = 0;
+        _virtualReadPosition = 0;
+        _virtualWritePosition = 0;
+        _eof = false;
+    }
+    
+    public boolean getEOF() {
+        return _eof;
+    }
+    
+    public void setEOF() {
+        _eof = true;
     }
     
     public int getBufferLength() {
-        return _bufferLength;
+        return (int)_bufferLength;
     }
     
     public int getReadPosition() {
-        return _readPosition;
+        return (int)(_virtualReadPosition % _bufferLength);
     }
     
     public int getWritePosition() {
-        return _writePosition;
+        return (int)(_virtualWritePosition % _bufferLength);
+    }
+    
+    public long getTotalReadCount() {
+        return _virtualReadPosition;
+    }
+    
+    public long getTotalWriteCount() {
+        return _virtualWritePosition;
     }
     
     public int getAvailableToRead() {
-        return getCalcWritePosition() - _readPosition;
+        return (int)(_virtualWritePosition - _virtualReadPosition);
+    }
+    
+    public int getAvailableToReadStraight() {
+        return Math.min(getAvailableToRead(), (int)(_bufferLength - (_virtualReadPosition % _bufferLength)));
     }
     
     public int getAvailableToWrite() {
-        return getCalcReadPosition() - _writePosition;
+        return (int)(_bufferLength - (_virtualWritePosition - _virtualReadPosition));
+    }
+    
+    public int getAvailableToWriteStraight() {
+        return Math.min(getAvailableToWrite(), (int)(_bufferLength - (_virtualWritePosition % _bufferLength)));
     }
     
     public int advanceReadPosition(int delta) {
-        if (delta < 0) {
-            throw new IllegalArgumentException("Parameter delta may not be negative.");
-        }
-        
-        int availableDelta = Math.min(delta, getAvailableToRead());
-        _readPosition = (_readPosition + availableDelta) % _bufferLength;
+        int availableDelta = getAvailableDeltaToAdvance(delta, getAvailableToRead());
+        _virtualReadPosition += availableDelta;
         return availableDelta;
     }
     
     public int advanceWritePosition(int delta) {
+        int availableDelta = getAvailableDeltaToAdvance(delta, getAvailableToWrite());
+        _virtualWritePosition += availableDelta;
+        return availableDelta;
+    }
+    
+    private int getAvailableDeltaToAdvance(int delta, int available) {
         if (delta < 0) {
             throw new IllegalArgumentException("Parameter delta may not be negative.");
         }
         
-        int availableDelta = Math.min(delta, getAvailableToWrite());
-        _writePosition = (_writePosition + availableDelta) % _bufferLength;
-        return availableDelta;
+        return Math.min(delta, available);
     }
     
-    private int getCalcReadPosition() {
-        return _writePosition <= _readPosition ? _readPosition : _bufferLength + _readPosition;
-    }
-    
-    private int getCalcWritePosition() {
-        return _readPosition <= _writePosition ? _writePosition : _bufferLength + _writePosition;
-    }
 }

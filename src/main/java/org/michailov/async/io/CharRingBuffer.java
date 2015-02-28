@@ -1,41 +1,37 @@
 package org.michailov.async.io;
 
-public class ByteRingBuffer extends RingBuffer {
+public class CharRingBuffer extends RingBuffer {
 
     private static final int NOT_AVAILABLE = -1;
     
-    byte[] _buffer;
+    char[] _buffer;
     
-    public ByteRingBuffer(int capacity) {
-        this(new byte[capacity]);
+    public CharRingBuffer(int capacity) {
+        this(new char[capacity]);
     }
     
-    public ByteRingBuffer(byte[] buffer) {
+    public CharRingBuffer(char[] buffer) {
         super(buffer.length);
         
         _buffer = buffer;
     }
     
-    public byte[] getBuffer() {
+    public char[] getBuffer() {
         return _buffer;
     }
     
     public int peek(int delta) {
-        if (delta < 0) {
-            throw new IllegalArgumentException("Argument delta may not be negative.");
-        }
-        
-        if (getAvailableToRead() <= delta) {
+        if (getAvailableToRead() < delta) {
             return NOT_AVAILABLE;
         }
         
         int i = (getReadPosition() + delta) % getBufferLength();
-        int b = _buffer[i];
-        return b;
+        int c = _buffer[i];
+        return c;
     }
     
     public int read() {
-        int p = peek(0);
+        int p = peek(1);
         if (p == NOT_AVAILABLE) {
             return NOT_AVAILABLE;
         }
@@ -44,15 +40,15 @@ public class ByteRingBuffer extends RingBuffer {
         return p;
     }
     
-    public int write(byte b) {
-        if (getAvailableToWrite() <= 0) {
+    public int write(char c) {
+        if (getAvailableToWrite() < 1) {
             return NOT_AVAILABLE;
         }
         
-        int i = getWritePosition();
-        _buffer[i] = b;
+        int i = (getWritePosition() + 1) % getBufferLength();
+        _buffer[i] = c;
 
         advanceWritePosition(1);
-        return b;
+        return c;
     }
 }
