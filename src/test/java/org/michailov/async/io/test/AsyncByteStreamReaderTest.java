@@ -1,6 +1,7 @@
 package org.michailov.async.io.test;
 
 import java.util.concurrent.*;
+import java.util.function.*;
 
 import org.junit.*;
 import org.michailov.async.io.*;
@@ -82,15 +83,12 @@ public class AsyncByteStreamReaderTest {
         state.streamIndex = 0;
         state.testFuture = new CompletableFuture<Void>();
         
-        CompletableFuture<Void> future;
         if (isLoop) {
-            future = state.reader.startReadingLoopAsync();
+            state.reader.startReadingLoopAsync();
             ForkJoinPool.commonPool().execute(() -> verifyReadingLoopAsync(state));
         }
         else {
-            // Read async
-            future = state.reader.readAsync();
-            future.whenCompleteAsync((res, th) -> verifyReadAsync(res, th, state));
+            readAndVerifyAsync(state);
         }
         
         try {
@@ -107,22 +105,22 @@ public class AsyncByteStreamReaderTest {
             }
         }
     }
-
-    private static void verifyReadAsync(Void result, Throwable throwable, ReadAsyncState state) {
-        if (throwable == null) {
-            // Verify the content in the ring buffer.
-            boolean isDone = verifyRingBuffer(state);
-            if (!isDone) {
-                // Continue reading async.
-                CompletableFuture<Void> future = state.reader.readAsync();
-                future.whenCompleteAsync((res, th) -> verifyReadAsync(res, th, state));
+    
+    private static void readAndVerifyAsync(ReadAsyncState state) {
+        CompletableFuture<Void> future = state.reader.readAsync();
+        future.whenCompleteAsync((result, throwable) -> {
+            if (throwable == null) {
+                // On success - verify ring buffer, and continue reading and verifying.
+                boolean isDone = verifyRingBuffer(state);
+                if (!isDone) {
+                    readAndVerifyAsync(state);
+                }
             }
-        }
-        else {
-            // Exception - abort the test.
-            throwable.printStackTrace(System.out);
-            state.testFuture.completeExceptionally(throwable);
-        }
+            else {
+                // On error - fail the test future.
+                state.testFuture.completeExceptionally(throwable);
+            }
+        });
     }
     
     private static void verifyReadingLoopAsync(ReadAsyncState state) {
