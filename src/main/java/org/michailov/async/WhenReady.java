@@ -54,7 +54,7 @@ public final class WhenReady {
         }
         
         // Build a continuation chain.
-        CompletableFuture<S> whenReady = completeAsync(ready, null, state); 
+        CompletableFuture<S> whenReady = completeAsync(ready, state, state); 
         whenReady.thenApplyAsync((S s) -> {
             // If the task is complete, quietly bail out.
             if (task.isDone()) {

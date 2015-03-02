@@ -2,8 +2,8 @@ package org.michailov.async.io.test;
 
 import java.util.concurrent.*;
 import java.util.function.*;
-
 import org.junit.*;
+import org.michailov.async.*;
 import org.michailov.async.io.*;
 
 public class AsyncByteStreamReaderTest {
@@ -84,10 +84,17 @@ public class AsyncByteStreamReaderTest {
         state.testFuture = new CompletableFuture<Void>();
         
         if (isLoop) {
+            // Start a read loop.
             state.reader.startReadingLoopAsync();
-            ForkJoinPool.commonPool().execute(() -> verifyReadingLoopAsync(state));
+            
+            // Start a verification loop.
+            Predicate<ReadAsyncState> ready = st -> st.ringBuffer.getAvailableToRead() > 0;
+            Predicate<ReadAsyncState> done = st -> st.reader.getEOF().isDone() && st.ringBuffer.getAvailableToRead() == 0;
+            Function<ReadAsyncState, Void> action = st -> { verifyRingBuffer(st); return null; };
+            WhenReady.startApplyLoopAsync(ready, done, action, state);
         }
         else {
+            // Use a sequence of read + verify.
             readAndVerifyAsync(state);
         }
         
@@ -117,17 +124,10 @@ public class AsyncByteStreamReaderTest {
                 }
             }
             else {
-                // On error - fail the test future.
+                // On exception - fail the test future.
                 state.testFuture.completeExceptionally(throwable);
             }
         });
-    }
-    
-    private static void verifyReadingLoopAsync(ReadAsyncState state) {
-        boolean isDone = verifyRingBuffer(state);
-        if (!isDone) {
-            ForkJoinPool.commonPool().execute(() -> verifyReadingLoopAsync(state));
-        }
     }
     
     private static boolean verifyRingBuffer(ReadAsyncState state) {
