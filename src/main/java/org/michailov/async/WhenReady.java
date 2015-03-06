@@ -4,107 +4,203 @@ import java.util.concurrent.*;
 import java.util.function.*;
 
 public final class WhenReady {
+    
     private static final ForkJoinPool THREAD_POOL = ForkJoinPool.commonPool();
+    private static final AsyncOptions DEFAULT_ASYNC_OPTIONS = new AsyncOptions();
 
-    // TODO: Add AsyncOptions.
-    // TODO: Check arguments.
     public static <S, R> CompletableFuture<R> completeAsync(Predicate<S> ready, R result, S state) {
-        return completeAsync(null, ready, result, state);
+        return completeAsync(ready, result, state, DEFAULT_ASYNC_OPTIONS);
     }
     
-    // TODO: Add AsyncOptions and check for timeout.
-    private static <S, R> CompletableFuture<R> completeAsync(CompletableFuture<R> taskOrNull, Predicate<S> ready, R result, S state) {
-        // Ensure a task.
-        CompletableFuture<R> task = taskOrNull != null ? taskOrNull : new CompletableFuture<R>();
+    public static <S, R> CompletableFuture<R> completeAsync(Predicate<S> ready, R result, S state, AsyncOptions asyncOptions) {
+        ensureArgumentNotNull("ready", ready);
+        ensureArgumentNotNull("result", result);
+        ensureArgumentNotNull("state", state);
+        ensureArgumentNotNull("asyncOptions", asyncOptions);
         
-        // If the task is complete, quietly bail out.
-        if (task.isDone()) {
-            return task;
+        ExecutionArgs<S, R> args = new ExecutionArgs<S, R>(ready, result, state);
+        ExecutionOptions options = new ExecutionOptions(asyncOptions);
+        ExecutionState<S, R> exec = new ExecutionState<S, R>(args, options);
+        return completeAsync(exec);
+    }
+    
+    private static <S, R> CompletableFuture<R> completeAsync(ExecutionState<S, R> exec) {
+        if (mustExit(exec)) {
+            return exec.future;
         }
 
-        if (ready.test(state)) {
-            // The predicate is ready.
-            // Complete sync.
-            task.complete(result);
+        if (exec.args.ready.test(exec.args.state)) {
+            exec.future.complete(exec.args.result);
         }
         else {
-            // The predicate is not ready.
-            // Schedule self to try again.
-            THREAD_POOL.execute(() -> completeAsync(task, ready, result, state));
+            THREAD_POOL.execute(() -> completeAsync(exec));
         }
         
-        return task;
+        return exec.future;
     }
     
-    // TODO: Add AsyncOptions and check for timeout.
-    // TODO: Check arguments.
     public static <S, R> CompletableFuture<R> applyAsync(Predicate<S> ready, Function<S, R> action, S state) {
-        return applyAsync(null, ready, action, state);
+        return applyAsync(ready, action, state, DEFAULT_ASYNC_OPTIONS);
     }
     
-    // TODO: Add AsyncOptions and check for timeout.
-    // TODO: Check arguments.
-    private static <S, R> CompletableFuture<R> applyAsync(CompletableFuture<R> taskOrNull, Predicate<S> ready, Function<S, R> action, S state) {
-        // Ensure a task.
-        CompletableFuture<R> task = taskOrNull != null ? taskOrNull : new CompletableFuture<R>();
+    public static <S, R> CompletableFuture<R> applyAsync(Predicate<S> ready, Function<S, R> action, S state, AsyncOptions asyncOptions) {
+        ensureArgumentNotNull("ready", ready);
+        ensureArgumentNotNull("action", action);
+        ensureArgumentNotNull("state", state);
+        ensureArgumentNotNull("asyncOptions", asyncOptions);
         
-        // If the task is complete, quietly bail out.
-        if (task.isDone()) {
-            return task;
+        ExecutionArgs<S, R> args = new ExecutionArgs<S, R>(ready, action, state);
+        ExecutionOptions options = new ExecutionOptions(asyncOptions);
+        ExecutionState<S, R> exec = new ExecutionState<S, R>(args, options);
+        return applyAsync(exec);
+    }
+    
+    private static <S, R> CompletableFuture<R> applyAsync(ExecutionState<S, R> exec) {
+        if (mustExit(exec)) {
+            return exec.future;
         }
         
-        // Build a continuation chain.
-        CompletableFuture<S> whenReady = completeAsync(ready, state, state); 
-        whenReady.thenApplyAsync((S s) -> {
-            // If the task is complete, quietly bail out.
-            if (task.isDone()) {
-                return null;
-            }
-
-            // Execute the action and return the result.
-            return action.apply(s);
-        });
+        ExecutionArgs<ExecutionState<S, R>, ExecutionState<S, R>> completeArgs = new ExecutionArgs<ExecutionState<S, R>, ExecutionState<S, R>>(e -> readyWrapper(e), exec, exec);
+        ExecutionState<ExecutionState<S, R>, ExecutionState<S, R>> completeExec = new ExecutionState<ExecutionState<S, R>, ExecutionState<S, R>>(completeArgs, exec.options);
+        CompletableFuture<ExecutionState<S, R>> whenReady = WhenReady.completeAsync(completeExec); 
+        whenReady.thenApplyAsync(e -> applyActionWrapper(e));
         
-        // Return the task that represents the whole operation.
-        return task;
+        return exec.future;
     }
     
-    // TODO: Add AsyncOptions.
-    // TODO: Check arguments.
+    private static<S, R> boolean readyWrapper(ExecutionState<S, R> exec) {
+        return exec.args.ready.test(exec.args.state);
+    }
+    
+    private static<S, R> ExecutionState<S, R> applyActionWrapper(ExecutionState<S, R> exec) {
+        if (mustExit(exec)) {
+            return exec;
+        }
+
+        R result = exec.args.action.apply(exec.args.state);
+        exec.future.complete(result);
+        
+        return exec;
+    }
+    
     public static <S, R> CompletableFuture<R> startApplyLoopAsync(Predicate<S> ready, Predicate<S> done, Function<S, R> action, S state) {
-        return startApplyLoopAsync(null, ready, done, action, state);
+        return startApplyLoopAsync(ready, done, action, state, DEFAULT_ASYNC_OPTIONS);
     }
     
-    // TODO: Add AsyncOptions and check for timeout.
-    private static <S, R> CompletableFuture<R> startApplyLoopAsync(CompletableFuture<R> taskOrNull, Predicate<S> ready, Predicate<S> done, Function<S, R> action, S state) {
-        // Ensure a task.
-        CompletableFuture<R> task = taskOrNull != null ? taskOrNull : new CompletableFuture<R>();
+    public static <S, R> CompletableFuture<R> startApplyLoopAsync(Predicate<S> ready, Predicate<S> done, Function<S, R> action, S state, AsyncOptions asyncOptions) {
+        ensureArgumentNotNull("ready", ready);
+        ensureArgumentNotNull("done", done);
+        ensureArgumentNotNull("action", action);
+        ensureArgumentNotNull("state", state);
+        ensureArgumentNotNull("asyncOptions", asyncOptions);
         
-        // If the task is complete, quietly bail out.
-        if (task.isDone()) {
-            return task;
+        ExecutionArgs<S, R> args = new ExecutionArgs<S, R>(ready, done, action, state);
+        ExecutionOptions options = new ExecutionOptions(asyncOptions);
+        ExecutionState<S, R> exec = new ExecutionState<S, R>(args, options);
+        return startApplyLoopAsync(exec);
+    }
+    
+    private static <S, R> CompletableFuture<R> startApplyLoopAsync(ExecutionState<S, R> exec) {
+        if (mustExit(exec)) {
+            return exec.future;
         }
 
-        // When the predicate is ready again -
-        applyAsync(ready, (S s) -> {
-            // If the task is complete, quietly bail out.
-            if (task.isDone()) {
-                return null;
-            }
-
-            // Execute the action and keep the result.
-            R result = action.apply(s);
-            
-            if (!done.test(s)) {
-                // Schedule next iteration.
-                startApplyLoopAsync(task, ready, done, action, state);
-            }
-            
-            // Return the result of the action.
-            return result;
-        }, state);
+        ExecutionArgs<ExecutionState<S, R>, ExecutionState<S, R>> applyArgs = new ExecutionArgs<ExecutionState<S, R>, ExecutionState<S, R>>(e -> readyWrapper(e), e -> loopActionWrapper(e), exec);
+        ExecutionState<ExecutionState<S, R>, ExecutionState<S, R>> applyExec = new ExecutionState<ExecutionState<S, R>, ExecutionState<S, R>>(applyArgs, exec.options);
+        WhenReady.applyAsync(applyExec);
         
-        // Return the task that represents the whole operation.
-        return task;
+        return exec.future;
     }
+    
+    private static<S, R> ExecutionState<S, R> loopActionWrapper(ExecutionState<S, R> exec) {
+        if (mustExit(exec)) {
+            return exec;
+        }
+
+        R result = exec.args.action.apply(exec.args.state);
+        
+        if (exec.args.done.test(exec.args.state)) {
+            exec.future.complete(result);
+        }
+        else {
+            startApplyLoopAsync(exec);
+        }
+        
+        return exec;
+    }
+    
+    private static<S, R> boolean mustExit(ExecutionState<S, R> exec) {
+        if (exec.future.isDone()) {
+            return true;
+        }
+        
+        long currentTimeMillis = System.currentTimeMillis();
+        if (currentTimeMillis > exec.options.startTimeMillis + exec.options.timeoutMillis) {
+            exec.future.completeExceptionally(new TimeoutException("Operation timed out."));
+            return true;
+        }
+
+        return false;
+    }
+    
+    /**
+     * Helper that checks an argument for null.
+     */
+    private static void ensureArgumentNotNull(String argName, Object argValue) {
+        if (argValue == null) {
+            throw new IllegalArgumentException(String.format("Argument %1$s may not be null.", argName));
+        }
+    }
+}
+
+final class ExecutionState<S, R> {
+    CompletableFuture<R> future;
+    final ExecutionArgs<S, R> args;
+    final ExecutionOptions options;
+    
+    ExecutionState(ExecutionArgs<S, R> args, ExecutionOptions options) {
+        this.future = new CompletableFuture<R>();
+        this.args = args;
+        this.options = options;
+    }
+}
+
+final class ExecutionOptions {
+    final long startTimeMillis;
+    final long timeoutMillis;
+    
+    ExecutionOptions(AsyncOptions asyncOptions) {
+        this.startTimeMillis = System.currentTimeMillis();
+        this.timeoutMillis = asyncOptions.timeout >= 0 ? asyncOptions.timeUnit.toMillis(asyncOptions.timeout) : AsyncOptions.TIMEOUT_INFINITE;
+    }
+}
+
+final class ExecutionArgs<S, R> {
+    final Predicate<S> ready;
+    final Predicate<S> done;
+    final Function<S, R> action;
+    final R result;
+    final S state;
+    
+    // Constructors for new operations.
+    ExecutionArgs(Predicate<S> ready, R result, S state) {
+        this(ready, null, null, result, state);
+    }
+    
+    ExecutionArgs (Predicate<S> ready, Function<S, R> action, S state) {
+        this(ready, null, action, null, state);
+    }
+    
+    ExecutionArgs(Predicate<S> ready, Predicate<S> done, Function<S, R> action, S state) {
+        this(ready, done, action, null, state);
+    }
+    
+    private ExecutionArgs(Predicate<S> ready, Predicate<S> done, Function<S, R> action, R result, S state) {
+        this.ready = ready;
+        this.done = done;
+        this.action = action;
+        this.result = result;
+        this.state = state;
+    }
+    
 }

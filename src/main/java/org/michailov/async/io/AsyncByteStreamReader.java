@@ -2,6 +2,7 @@ package org.michailov.async.io;
 
 import java.io.*;
 import java.util.concurrent.*;
+import org.michailov.async.*;
 
 /**
  * Asynchronous byte reader over a plain old InputStream.
@@ -245,7 +246,7 @@ public class AsyncByteStreamReader {
     }
 
     /**
-     * Helper that check arguments for null.
+     * Helper that checks an argument for null.
      */
     private static void ensureArgumentNotNull(String argName, Object argValue) {
         if (argValue == null) {
