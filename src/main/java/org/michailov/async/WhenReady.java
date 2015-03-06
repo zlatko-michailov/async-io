@@ -64,6 +64,7 @@ public final class WhenReady {
         ExecutionState<ExecutionState<S, R>, ExecutionState<S, R>> completeExec = new ExecutionState<ExecutionState<S, R>, ExecutionState<S, R>>(completeArgs, exec.options);
         CompletableFuture<ExecutionState<S, R>> whenReady = WhenReady.completeAsync(completeExec); 
         whenReady.thenApplyAsync(e -> applyActionWrapper(e));
+        setExceptionalCompletion(completeExec.future, exec.future);
         
         return exec.future;
     }
@@ -107,6 +108,7 @@ public final class WhenReady {
 
         ExecutionArgs<ExecutionState<S, R>, ExecutionState<S, R>> applyArgs = new ExecutionArgs<ExecutionState<S, R>, ExecutionState<S, R>>(e -> readyWrapper(e), e -> loopActionWrapper(e), exec);
         ExecutionState<ExecutionState<S, R>, ExecutionState<S, R>> applyExec = new ExecutionState<ExecutionState<S, R>, ExecutionState<S, R>>(applyArgs, exec.options);
+        setExceptionalCompletion(applyExec.future, exec.future);
         WhenReady.applyAsync(applyExec);
         
         return exec.future;
@@ -134,13 +136,23 @@ public final class WhenReady {
             return true;
         }
         
-        long currentTimeMillis = System.currentTimeMillis();
-        if (currentTimeMillis > exec.options.startTimeMillis + exec.options.timeoutMillis) {
-            exec.future.completeExceptionally(new TimeoutException("Operation timed out."));
-            return true;
+        if (exec.options.timeoutMillis > 0) {
+            long currentTimeMillis = System.currentTimeMillis();
+            if (currentTimeMillis > exec.options.startTimeMillis + exec.options.timeoutMillis) {
+                exec.future.completeExceptionally(new TimeoutException("Operation timed out."));
+                return true;
+            }
         }
 
         return false;
+    }
+    
+    private static<S, R> void setExceptionalCompletion(CompletableFuture<S> future1, CompletableFuture<R> future2) {
+        future1.whenCompleteAsync((s, throwable) -> {
+            if (throwable != null && !future2.isDone()) {
+                future2.completeExceptionally(throwable);
+            }
+        });
     }
     
     /**
@@ -153,54 +165,3 @@ public final class WhenReady {
     }
 }
 
-final class ExecutionState<S, R> {
-    CompletableFuture<R> future;
-    final ExecutionArgs<S, R> args;
-    final ExecutionOptions options;
-    
-    ExecutionState(ExecutionArgs<S, R> args, ExecutionOptions options) {
-        this.future = new CompletableFuture<R>();
-        this.args = args;
-        this.options = options;
-    }
-}
-
-final class ExecutionOptions {
-    final long startTimeMillis;
-    final long timeoutMillis;
-    
-    ExecutionOptions(AsyncOptions asyncOptions) {
-        this.startTimeMillis = System.currentTimeMillis();
-        this.timeoutMillis = asyncOptions.timeout >= 0 ? asyncOptions.timeUnit.toMillis(asyncOptions.timeout) : AsyncOptions.TIMEOUT_INFINITE;
-    }
-}
-
-final class ExecutionArgs<S, R> {
-    final Predicate<S> ready;
-    final Predicate<S> done;
-    final Function<S, R> action;
-    final R result;
-    final S state;
-    
-    // Constructors for new operations.
-    ExecutionArgs(Predicate<S> ready, R result, S state) {
-        this(ready, null, null, result, state);
-    }
-    
-    ExecutionArgs (Predicate<S> ready, Function<S, R> action, S state) {
-        this(ready, null, action, null, state);
-    }
-    
-    ExecutionArgs(Predicate<S> ready, Predicate<S> done, Function<S, R> action, S state) {
-        this(ready, done, action, null, state);
-    }
-    
-    private ExecutionArgs(Predicate<S> ready, Predicate<S> done, Function<S, R> action, R result, S state) {
-        this.ready = ready;
-        this.done = done;
-        this.action = action;
-        this.result = result;
-        this.state = state;
-    }
-    
-}
