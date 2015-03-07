@@ -17,7 +17,7 @@ public class AsyncByteStreamReaderTest {
         final int BUFF_LENGTH = 19;
         final long TIMEOUT_MILLIS = 10000;
         
-        System.out.println("\n testReadAsync {");
+        System.out.println("\ntestReadAsync {");
         
         testReadAsync(NOT_LOOP, STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, BUFF_LENGTH, TIMEOUT_MILLIS);
         
@@ -33,7 +33,7 @@ public class AsyncByteStreamReaderTest {
         final int BUFF_LENGTH = 19;
         final long TIMEOUT_MILLIS = 100;
         
-        System.out.println("\n testReadAsyncTimeout {");
+        System.out.println("\ntestReadAsyncTimeout {");
         
         testReadAsync(NOT_LOOP, STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, BUFF_LENGTH, TIMEOUT_MILLIS);
         
@@ -49,7 +49,7 @@ public class AsyncByteStreamReaderTest {
         final int BUFF_LENGTH = 19;
         final long TIMEOUT_MILLIS = 10000;
         
-        System.out.println("\n testStartReadingLoopAsync {");
+        System.out.println("\ntestStartReadingLoopAsync {");
         
         testReadAsync(LOOP, STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, BUFF_LENGTH, TIMEOUT_MILLIS);
         
@@ -65,7 +65,7 @@ public class AsyncByteStreamReaderTest {
         final int BUFF_LENGTH = 19;
         final long TIMEOUT_MILLIS = 100;
         
-        System.out.println("\n testStartReadingLoopAsyncTimeout {");
+        System.out.println("\ntestStartReadingLoopAsyncTimeout {");
         
         testReadAsync(LOOP, STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, BUFF_LENGTH, TIMEOUT_MILLIS);
         
