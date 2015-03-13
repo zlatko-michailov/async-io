@@ -133,7 +133,7 @@ public class WhenReadyTest {
         try {
             result = future.get().intValue();
         }
-        catch (Exception ex) {
+        catch (Throwable ex) {
             Throwable cause = ex.getCause();
             if (cause != null) {
                 throw cause;

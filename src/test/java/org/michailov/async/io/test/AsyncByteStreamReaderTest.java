@@ -85,7 +85,13 @@ public class AsyncByteStreamReaderTest {
         
         if (isLoop) {
             // Start a read loop.
-            state.reader.startReadingLoopAsync();
+            CompletableFuture<Void> future = state.reader.startReadingLoopAsync();
+            future.whenCompleteAsync((result, ex) -> {
+                if (ex != null) {
+                    // On exception - fail the test future.
+                    state.testFuture.completeExceptionally(ex);
+                }
+            });
             
             // Start a verification loop.
             Predicate<ReadAsyncState> ready = st -> st.ringBuffer.getAvailableToRead() > 0;
@@ -102,7 +108,7 @@ public class AsyncByteStreamReaderTest {
             // Await completion
             state.testFuture.get();
         }
-        catch (Exception ex) {
+        catch (Throwable ex) {
             ex.printStackTrace();
             
             // If there is a cause, re-throw it.
@@ -115,8 +121,8 @@ public class AsyncByteStreamReaderTest {
     
     private static void readAndVerifyAsync(ReadAsyncState state) {
         CompletableFuture<Void> future = state.reader.readAsync();
-        future.whenCompleteAsync((result, throwable) -> {
-            if (throwable == null) {
+        future.whenCompleteAsync((result, ex) -> {
+            if (ex == null) {
                 // On success - verify ring buffer, and continue reading and verifying.
                 boolean isDone = verifyRingBuffer(state);
                 if (!isDone) {
@@ -125,7 +131,7 @@ public class AsyncByteStreamReaderTest {
             }
             else {
                 // On exception - fail the test future.
-                state.testFuture.completeExceptionally(throwable);
+                state.testFuture.completeExceptionally(ex);
             }
         });
     }

@@ -1,8 +1,7 @@
 package org.michailov.async;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.concurrent.*;
+import java.util.function.*;
 
 final class ExecutionState<S, R> {
     
@@ -11,7 +10,11 @@ final class ExecutionState<S, R> {
     final ExecutionOptions options;
     
     ExecutionState(ExecutionArgs<S, R> args, ExecutionOptions options) {
-        this.future = new CompletableFuture<R>();
+        this(new CompletableFuture<R>(), args, options);
+    }
+    
+    private ExecutionState(CompletableFuture<R> future, ExecutionArgs<S, R> args, ExecutionOptions options) {
+        this.future = future;
         this.args = args;
         this.options = options;
     }
@@ -43,7 +46,7 @@ final class ExecutionArgs<S, R> {
         this(ready, null, null, result, state);
     }
     
-    ExecutionArgs (Predicate<S> ready, Function<S, R> action, S state) {
+   ExecutionArgs (Predicate<S> ready, Function<S, R> action, S state) {
         this(ready, null, action, null, state);
     }
     
@@ -51,7 +54,7 @@ final class ExecutionArgs<S, R> {
         this(ready, done, action, null, state);
     }
     
-    private ExecutionArgs(Predicate<S> ready, Predicate<S> done, Function<S, R> action, R result, S state) {
+    ExecutionArgs(Predicate<S> ready, Predicate<S> done, Function<S, R> action, R result, S state) {
         this.ready = ready;
         this.done = done;
         this.action = action;
