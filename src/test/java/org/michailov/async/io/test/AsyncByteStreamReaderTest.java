@@ -73,7 +73,7 @@ public class AsyncByteStreamReaderTest {
     }
 
     private void testReadAsync(boolean isLoop, int streamLength, int chunkLength, int chunkDelayMillis, int buffLength, long timeoutMillis) throws Throwable {
-        ReadAsyncState state = new ReadAsyncState();
+        TestReadAsyncState state = new TestReadAsyncState();
         state.asyncOptions = new AsyncOptions();
         state.asyncOptions.timeout = timeoutMillis;
         state.ringBuffer = new ByteRingBuffer(buffLength);
@@ -85,19 +85,7 @@ public class AsyncByteStreamReaderTest {
         
         if (isLoop) {
             // Start a read loop.
-            CompletableFuture<Void> future = state.reader.startReadingLoopAsync();
-            future.whenCompleteAsync((result, ex) -> {
-                if (ex != null) {
-                    // On exception - fail the test future.
-                    state.testFuture.completeExceptionally(ex);
-                }
-            });
-            
-            // Start a verification loop.
-            Predicate<ReadAsyncState> ready = st -> st.ringBuffer.getAvailableToRead() > 0;
-            Predicate<ReadAsyncState> done = st -> st.reader.getEOF().isDone() && st.ringBuffer.getAvailableToRead() == 0;
-            Function<ReadAsyncState, Void> action = st -> { verifyRingBuffer(st); return null; };
-            WhenReady.startApplyLoopAsync(ready, done, action, state);
+            readAndVerifyLoopAsync(state);
         }
         else {
             // Use a sequence of read + verify.
@@ -118,31 +106,49 @@ public class AsyncByteStreamReaderTest {
             }
         }
     }
+    private static void readAndVerifyLoopAsync(TestReadAsyncState state) {
+        CompletableFuture<Void> future = state.reader.startReadingLoopAsync();
+        future.whenCompleteAsync((result, ex) -> {
+            if (ex != null) {
+                // On exception - fail the test future.
+                state.testFuture.completeExceptionally(ex);
+            }
+            
+            // On success - it will be all over. We'll start a separate async loop to verify the content. 
+        });
+        
+        // Start a verification loop.
+        Predicate<TestReadAsyncState> ready = st -> st.ringBuffer.getAvailableToRead() > 0;
+        Predicate<TestReadAsyncState> done = st -> st.reader.getEOF().isDone() && st.ringBuffer.getAvailableToRead() == 0;
+        Function<TestReadAsyncState, Void> action = st -> { verifyRingBuffer(st); return null; };
+        WhenReady.startApplyLoopAsync(ready, done, action, state);
+    }
     
-    private static void readAndVerifyAsync(ReadAsyncState state) {
+    private static void readAndVerifyAsync(TestReadAsyncState state) {
         CompletableFuture<Void> future = state.reader.readAsync();
         future.whenCompleteAsync((result, ex) -> {
-            if (ex == null) {
+            if (ex != null) {
+                // On exception - fail the test future.
+                state.testFuture.completeExceptionally(ex);
+            }
+            else {
                 // On success - verify ring buffer, and continue reading and verifying.
                 boolean isDone = verifyRingBuffer(state);
                 if (!isDone) {
                     readAndVerifyAsync(state);
                 }
             }
-            else {
-                // On exception - fail the test future.
-                state.testFuture.completeExceptionally(ex);
-            }
         });
     }
     
-    private static boolean verifyRingBuffer(ReadAsyncState state) {
+    private static boolean verifyRingBuffer(TestReadAsyncState state) {
+        // Read and verify any available content from the ring buffer.
         while (state.ringBuffer.getAvailableToRead() > 0) {
-            int bx = InputStreamSimulator.CONTENT_BYTES[state.streamIndex % InputStreamSimulator.CONTENT_BYTES_LENGTH];
-            int ba = state.ringBuffer.read();
+            int expectedByte = InputStreamSimulator.CONTENT_BYTES[state.streamIndex % InputStreamSimulator.CONTENT_BYTES_LENGTH];
+            int actualByte = state.ringBuffer.read();
             
-            System.out.println(String.format("Byte[%1$d]: %2$d = %3$d", state.streamIndex, bx, ba));
-            if (bx != ba) {
+            System.out.println(String.format("Byte[%1$d]: %2$d = %3$d", state.streamIndex, expectedByte, actualByte));
+            if (expectedByte != actualByte) {
                 state.testFuture.completeExceptionally(new Exception("Wrong byte!"));
                 return true;
             }
@@ -150,25 +156,26 @@ public class AsyncByteStreamReaderTest {
             state.streamIndex++;
         }
 
+        // Check the state of the reader.
         CompletableFuture<Void> eof = state.reader.getEOF();
         if (eof.isCompletedExceptionally()) {
             // An exception has occurred. 
-            // Pass it to testFuture.
+            // Pass it to testFuture (without trying to get the result which would throw here.)
             eof.whenComplete((res, th) -> {
                     state.testFuture.completeExceptionally(th);
                 });
             return true;
         }
         else if (eof.isDone()) {
-            // EOF
-            // Verify length.
+            // The reader has reached EOF.
+            // Verify the stream length.
             System.out.println(String.format("Stream length: %1$d = %2$d", state.streamIndex, state.streamLength));
             if (state.streamIndex != state.streamLength) {
                 state.testFuture.completeExceptionally(new Exception("Wrong stream length!"));
                 return true;
             }
             
-            // Complete test.
+            // Complete the test.
             state.testFuture.complete(null);
             return true;
         }
@@ -176,7 +183,7 @@ public class AsyncByteStreamReaderTest {
         return false;
     }
     
-    private class ReadAsyncState {
+    private class TestReadAsyncState {
         AsyncOptions asyncOptions;
         ByteRingBuffer ringBuffer;
         InputStreamSimulator simulator;

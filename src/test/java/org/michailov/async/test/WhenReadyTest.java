@@ -2,7 +2,6 @@ package org.michailov.async.test;
 
 import java.util.concurrent.*;
 import java.util.function.*;
-
 import org.junit.*;
 import org.michailov.async.*;
 
