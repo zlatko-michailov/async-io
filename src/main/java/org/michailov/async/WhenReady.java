@@ -5,6 +5,7 @@ import java.util.function.*;
 
 public final class WhenReady {
     
+    private static final String TIMEOUT_MESSAGE = "Operation timed out.";
     private static final ForkJoinPool THREAD_POOL = ForkJoinPool.commonPool();
     private static final AsyncOptions DEFAULT_ASYNC_OPTIONS = new AsyncOptions();
 
@@ -14,32 +15,11 @@ public final class WhenReady {
     
     public static <S, R> CompletableFuture<R> completeAsync(Predicate<S> ready, R result, S state, AsyncOptions asyncOptions) {
         ensureArgumentNotNull("ready", ready);
-        //ensureArgumentNotNull("result", result);
-        //ensureArgumentNotNull("state", state);
         ensureArgumentNotNull("asyncOptions", asyncOptions);
-        
-        ExecutionArgs<S, R> args = new ExecutionArgs<S, R>(ready, result, state);
-        ExecutionOptions options = new ExecutionOptions(asyncOptions);
-        ExecutionState<S, R> exec = new ExecutionState<S, R>(args, options);
-        return completeAsync(exec);
-    }
-    
-    private static <S, R> CompletableFuture<R> completeAsync(ExecutionState<S, R> exec) {
-        try {
-            if (!mustExit(exec)) {
-                if (readyWrapper(exec)) {
-                    completeFutureSafe(exec.future, exec.args.result);
-                }
-                else {
-                    THREAD_POOL.submit(() -> completeAsync(exec));
-                }
-            }
-        }
-        catch (Throwable ex) {
-            completeFutureExceptionallySafe(exec.future, ex);
-        }
-        
-        return exec.future;
+
+        CompletableFuture<R> future = new CompletableFuture<R>();
+        WhenReadyArguments<S, R> args = new WhenReadyArguments<S, R>(ready, result, state, asyncOptions);
+        return completeAsync(future, args);
     }
     
     public static <S, R> CompletableFuture<R> applyAsync(Predicate<S> ready, Function<S, R> action, S state) {
@@ -47,36 +27,8 @@ public final class WhenReady {
     }
     
     public static <S, R> CompletableFuture<R> applyAsync(Predicate<S> ready, Function<S, R> action, S state, AsyncOptions asyncOptions) {
-        ensureArgumentNotNull("ready", ready);
-        ensureArgumentNotNull("action", action);
-        //ensureArgumentNotNull("state", state);
-        ensureArgumentNotNull("asyncOptions", asyncOptions);
-        
-        ExecutionArgs<S, R> args = new ExecutionArgs<S, R>(ready, s -> true, action, state);
-        ExecutionOptions options = new ExecutionOptions(asyncOptions);
-        ExecutionState<S, R> exec = new ExecutionState<S, R>(args, options);
-        
-        // TODO: Merge applyLoop and startApplyLoop
-        return startApplyLoopAsync(exec);
-    }
-    
-    private static <S, R> CompletableFuture<R> applyAsync(ExecutionState<S, R> exec) {
-        if (mustExit(exec)) {
-            return exec.future;
-        }
-        
-        ExecutionArgs<ExecutionState<S, R>, ExecutionState<S, R>> completeArgs = 
-                new ExecutionArgs<ExecutionState<S, R>, ExecutionState<S, R>>(
-                        //e -> readyWrapper(e), exec, exec);
-                        e -> readyWrapper(e), e -> doneWrapper(e), e -> actionWrapper(e), exec, exec);
-        ExecutionState<ExecutionState<S, R>, ExecutionState<S, R>> completeExec = 
-                new ExecutionState<ExecutionState<S, R>, ExecutionState<S, R>>(
-                        completeArgs, exec.options);
-        
-        CompletableFuture<ExecutionState<S, R>> whenReady = WhenReady.completeAsync(completeExec); 
-        whenReady.whenCompleteAsync((e, ex) -> applyActionWrapper(e, ex));
-        
-        return exec.future;
+        final Predicate<S> DONE_PERMANENTLY = s -> true;
+        return startApplyLoopAsync(ready, DONE_PERMANENTLY, action, state, asyncOptions);
     }
     
     public static <S, R> CompletableFuture<R> startApplyLoopAsync(Predicate<S> ready, Predicate<S> done, Function<S, R> action, S state) {
@@ -87,101 +39,75 @@ public final class WhenReady {
         ensureArgumentNotNull("ready", ready);
         ensureArgumentNotNull("done", done);
         ensureArgumentNotNull("action", action);
-        //ensureArgumentNotNull("state", state);
         ensureArgumentNotNull("asyncOptions", asyncOptions);
         
-        ExecutionArgs<S, R> args = new ExecutionArgs<S, R>(ready, done, action, state);
-        ExecutionOptions options = new ExecutionOptions(asyncOptions);
-        ExecutionState<S, R> exec = new ExecutionState<S, R>(args, options);
-        
-        return startApplyLoopAsync(exec);
+        CompletableFuture<R> future = new CompletableFuture<R>();
+        WhenReadyArguments<S, R> args = new WhenReadyArguments<S, R>(ready, done, action, state, asyncOptions);
+        return startApplyLoopAsync(future, args);
     }
     
-    private static <S, R> CompletableFuture<R> startApplyLoopAsync(ExecutionState<S, R> exec) {
-        if (mustExit(exec)) {
-            return exec.future;
+    private static <S, R> CompletableFuture<R> startApplyLoopAsync(CompletableFuture<R> future, WhenReadyArguments<S, R> args) {
+        if (mustExit(future, args)) {
+            return future;
         }
 
-        /*ExecutionArgs<S, R> args2 = new ExecutionArgs<S, R>(
-                        //e -> readyWrapper(e), e -> doneWrapper(e), e -> loopActionWrapper(e, null), exec);
-                        e -> readyWrapper(e), e -> doneWrapper(e), e -> actionWrapper(e), exec, exec);
-        ExecutionState<ExecutionState<S, R>, ExecutionState<S, R>> applyExec = 
-                new ExecutionState<ExecutionState<S, R>, ExecutionState<S, R>>(
-                        applyArgs, exec.options);*/
-        
-        ExecutionState<S, R> exec2 = new ExecutionState<S, R>(exec.args, exec.options);
-        CompletableFuture<R> whenReady = WhenReady.completeAsync(exec2); 
-        whenReady.whenCompleteAsync((e, ex) -> loopActionWrapper(exec, ex));
+        CompletableFuture<R> whenReady = new CompletableFuture<R>();
+        WhenReady.completeAsync(whenReady, args); 
+        whenReady.whenCompleteAsync((a, ex) -> applyLoopAsync(future, args, ex));
 
-        return exec.future;
+        return future;
     }
     
-    private static<S, R> boolean readyWrapper(ExecutionState<S, R> exec) {
-        boolean isReady = exec.args.ready.test(exec.args.state);
-        return isReady;
-    }
-    
-    private static<S, R> boolean doneWrapper(ExecutionState<S, R> exec) {
-        boolean isDone = exec.args.done.test(exec.args.state);
-        return isDone;
-    }
-    
-    private static<S, R> ExecutionState<S, R> actionWrapper(ExecutionState<S, R> exec) {
-        R result = exec.args.action.apply(exec.args.state);
-        
-        if (doneWrapper(exec)) {
-            completeFutureSafe(exec.future, result);
-        }
-        
-        return exec;
-    }
-    
-    private static<S, R> ExecutionState<S, R> applyActionWrapper(ExecutionState<S, R> exec, Throwable exception) {
+    private static <S, R> CompletableFuture<R> completeAsync(CompletableFuture<R> future, WhenReadyArguments<S, R> args) {
         try {
-            if (exception != null) {
-                completeFutureExceptionallySafe(exec.future, exception);
-                return exec;
-            }
-    
-            if (!mustExit(exec)) {
-                actionWrapper(exec);
-            }
-        }
-        catch (Throwable ex) {
-            completeFutureExceptionallySafe(exec.future, ex);
-        }
-        
-        return exec;
-    }
-    
-    private static<S, R> void loopActionWrapper(ExecutionState<S, R> exec, Throwable exception) {
-        try {
-            if (exception != null) {
-                completeFutureExceptionallySafe(exec.future, exception);
-            }
-            
-            if (!mustExit(exec)) {
-                actionWrapper(exec);
-                
-                if (!mustExit(exec)) {
-                    THREAD_POOL.submit(() -> startApplyLoopAsync(exec));
+            if (!mustExit(future, args)) {
+                if (args.ready.test(args.state)) {
+                    completeFutureSafe(future, args.result);
+                }
+                else {
+                    THREAD_POOL.execute(() -> completeAsync(future, args));
                 }
             }
         }
         catch (Throwable ex) {
-            completeFutureExceptionallySafe(exec.future, ex);
+            completeFutureExceptionallySafe(future, ex);
+        }
+        
+        return future;
+    }
+    
+    private static<S, R> void applyLoopAsync(CompletableFuture<R> future, WhenReadyArguments<S, R> args, Throwable exception) {
+        try {
+            if (exception != null) {
+                completeFutureExceptionallySafe(future, exception);
+            }
+            
+            if (!mustExit(future, args)) {
+                R result = args.action.apply(args.state);
+                
+                if (args.done.test(args.state)) {
+                    completeFutureSafe(future, result);
+                }
+                
+                if (!mustExit(future, args)) {
+                    THREAD_POOL.execute(() -> startApplyLoopAsync(future, args));
+                }
+            }
+        }
+        catch (Throwable ex) {
+            completeFutureExceptionallySafe(future, ex);
         }
     }
     
-    private static<S, R> boolean mustExit(ExecutionState<S, R> exec) {
-        if (exec.future.isDone()) {
+    private static<S, R> boolean mustExit(CompletableFuture<R> future, WhenReadyArguments<S, R> args) {
+        if (future.isDone()) {
             return true;
         }
         
-        if (exec.options.timeoutMillis > 0) {
+        if (args.timeoutMillis > 0) {
             long currentTimeMillis = System.currentTimeMillis();
-            if (currentTimeMillis > exec.options.startTimeMillis + exec.options.timeoutMillis) {
-                completeFutureExceptionallySafe(exec.future, new TimeoutException("Operation timed out."));
+            if (currentTimeMillis > args.startTimeMillis + args.timeoutMillis) {
+                completeFutureExceptionallySafe(future, new TimeoutException(TIMEOUT_MESSAGE));
                 return true;
             }
         }
@@ -219,5 +145,6 @@ public final class WhenReady {
             throw new IllegalArgumentException(String.format("Argument %1$s may not be null.", argName));
         }
     }
+
 }
 

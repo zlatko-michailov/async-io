@@ -31,8 +31,6 @@ public class AsyncByteStreamReader {
     private final CompletableFuture<Void> _eof;
     
     private Mode _mode;
-    private long _startTimeMillis;
-    private long _timeoutMillis;
     
     /**
      * Constructs a new AsyncByteStreamReader instance to read from the given InputStream
@@ -162,131 +160,6 @@ public class AsyncByteStreamReader {
         throw new AsyncException(ex);
     }
     
-    /*private CompletableFuture<Void> startRead(boolean isLoop) {
-        ensureReadableState1();
-        
-        // Cache the current read future locally because the member may get nulled out in parallel. 
-        CompletableFuture<Void> future = new CompletableFuture<Void>();
-        
-        // Initialize the current read's context.
-        _future = future;
-        _startTimeMillis = System.currentTimeMillis();
-        _timeoutMillis = _asyncOptions.timeout >= 0 ? _asyncOptions.timeUnit.toMillis(_asyncOptions.timeout) : AsyncOptions.TIMEOUT_INFINITE;
-
-        // Read sync if possible or submit an operation.
-        submitRead(isLoop);
-        
-        return future;
-    }
-    
-    private void submitRead(boolean isLoop) {
-        // Attempt to read sync.
-        boolean isDone = readSync(isLoop);
-
-        if (!isDone) {
-            // Nothing could be read sync, nor was there an error.
-            // Before submitting a new attempt, check timeout.
-            isDone = hasTimedOut(isLoop);
-        }
-        
-        if (!isDone) {
-            // Nothing has came out from this attempt.
-            // Submit another one.
-            ForkJoinPool.commonPool().execute(() -> submitRead(isLoop));
-        }
-    }
-    
-    private boolean readSync(boolean isLoop) {
-        try {
-            // Check what's available from the stream.
-            int availableByteCount = _inputStream.available();
-            if (availableByteCount > 0) {
-                // If something is available, try to read the minimum of that and what's available to write straight in the ring buffer.
-                int targetByteCount = Math.min(availableByteCount, _byteRingBuffer.getAvailableToWriteStraight());
-                int actualByteCount = _inputStream.read(_byteRingBuffer.getBuffer(), _byteRingBuffer.getWritePosition(), targetByteCount);
-                if (actualByteCount != 0) {
-                    
-                    boolean isDone = false;
-
-                    if (actualByteCount == EOF) {
-                        // EOF was received from the stream -
-                        // Complete everything - the current read future, the EOF, and the ring buffer.
-                        // Done.
-                        _eof.complete(null);
-                        _byteRingBuffer.setEOF();
-                        _future.complete(null);
-                        _future = null;
-                        isDone = true;
-                    }
-                    else {
-                        // Bytes were read from the stream and written into the ring buffer.
-                        // Advance the ring buffer's write position.
-                        _byteRingBuffer.advanceWritePosition(actualByteCount);
-                        
-                        if (!isLoop) {
-                            // Something (good or bad) was received from the stream. 
-                            // Complete the current read future.
-                            // Done.
-                            _future.complete(null);
-                            _future = null;
-                            isDone = true;
-                        }
-                    }
-                    
-                    return isDone;
-                }
-            }
-        }
-        catch(IOException ex) {
-            // Upon exception, complete the current read future, the EOF, and the ring buffer.
-            // Done.
-            _eof.completeExceptionally(ex);
-            _byteRingBuffer.setEOF();
-            _future.completeExceptionally(ex);
-            _future = null;
-            
-            return true;
-        }
-        
-        // Nothing interesting has happened. So not done yet.
-        return false;
-    }
-    
-    private boolean hasTimedOut(boolean isLoop) {
-        if (_asyncOptions.timeout >= 0) {
-            long currentTimeMillis = System.currentTimeMillis();
-            if (currentTimeMillis - _startTimeMillis > _timeoutMillis) {
-                // Time's up!
-                // Complete the current read future with a TimeoutException.
-                _future.completeExceptionally(new TimeoutException());
-                _future = null;
-                
-                if (isLoop) {
-                    // Complete the EOF and the ring buffer.
-                    _eof.completeExceptionally(new TimeoutException());
-                    _byteRingBuffer.setEOF();
-                }
-
-                // Done.
-                return true;
-            }
-        }
-        
-        return false;
-    }
-    
-    private void ensureReadableState1() {
-        // There should be no outstanding operation on this reader.
-        if (_future != null) {
-            throw new IllegalStateException("There is already a readAsync operation in progress. Await for the returned CompletableFuture to complete, and retry.");
-        }
-        
-        // If EOF has already been reached, the caller shouldn't have continued.
-        if (_eof.isDone()) {
-            throw new IllegalStateException("Attempting to read past the end of stream.");
-        }
-    }*/
-
     /**
      * Ensures the state is good for starting a new read operation.
      */
@@ -318,4 +191,5 @@ public class AsyncByteStreamReader {
         ONCE,
         LOOP
     }
+    
 }

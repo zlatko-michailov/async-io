@@ -35,4 +35,14 @@ dependencies {
     testCompile 'junit:junit:4.12'
 }
 
-
+test {
+    afterTest { descriptor, result ->
+        def testName = descriptor.getClassName() + " : " + descriptor.getName();
+        if (result.getFailedTestCount() == 0) {
+            logger.lifecycle("[Passed] " + testName);
+        }
+        else {
+            logger.lifecycle("[FAILED] " + testName);
+        }
+    }
+}
