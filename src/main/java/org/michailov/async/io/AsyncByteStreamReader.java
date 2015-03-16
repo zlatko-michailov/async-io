@@ -6,18 +6,17 @@ import org.michailov.async.*;
 
 /**
  * Asynchronous byte reader over a plain old InputStream.
- * The reader never blocks (as long as the stream correctly reports its available bytes.)
+ * The reader doesn't block as long as the stream correctly reports its available bytes.
  * <p>
  * The reader reads available bytes from the stream if there are any. 
  * If there aren't, it schedules a future to do that.
  * <p>
- * The stream bytes are read into a ByteRingBuffer. 
+ * The stream bytes are read into a {@link ByteRingBuffer}. 
  * <p>
  * Note: The caller is responsible for opening and closing the stream as needed. 
  * 
- * @see     java.io.InputStream
- * @see     java.util.concurrent.CompletableFuture
  * @see     ByteRingBuffer
+ * @see     WhenReady
  * 
  * @author  Zlatko Michailov
  */
@@ -34,11 +33,11 @@ public class AsyncByteStreamReader {
     
     /**
      * Constructs a new AsyncByteStreamReader instance to read from the given InputStream
-     * into the given ByteRingBuffer.
+     * into the given {@link ByteRingBuffer}.
      * 
      * @param   inputStream     An InputStream to read from.
-     * @param   byteRingBuffer  A ByteRingBuffer to write to.
-     * @param   asyncOptions    AsyncOptions to use for all async operations. 
+     * @param   byteRingBuffer  A {@link ByteRingBuffer} to write to.
+     * @param   asyncOptions    {@link AsyncOptions} that will control all async operations on this instance. 
      */
     public AsyncByteStreamReader(InputStream inputStream, ByteRingBuffer byteRingBuffer, AsyncOptions asyncOptions) {
         ensureArgumentNotNull("inputStream", inputStream);
@@ -79,6 +78,11 @@ public class AsyncByteStreamReader {
         return _byteRingBuffer;
     }
 
+    /**
+     * Reads bytes from the stream and writes them into the ring buffer.
+     * 
+     * @return  A future that completes when either some bytes have been read or an exception has occurred.
+     */
     public CompletableFuture<Void> readAsync() {
         ensureReadableState(Mode.ONCE);
 
@@ -96,6 +100,9 @@ public class AsyncByteStreamReader {
         return WhenReady.startApplyLoopAsync(reader -> reader.canRead(), reader -> reader._eof.isDone(), reader -> reader.read(), this, _asyncOptions);
     }
     
+    /**
+     * 'ready' predicate that returns true iff bytes can be read from the stream and written to the ring buffer without blocking.   
+     */
     private boolean canRead() {
         boolean isReady = false;
         
@@ -109,6 +116,9 @@ public class AsyncByteStreamReader {
         return isReady;
     }
     
+    /**
+     * 'action' function that reads bytes from the stream and writes them to the ring buffer.   
+     */
     private Void read() {
         try {
             int availableByteCount = _inputStream.available();
@@ -140,10 +150,17 @@ public class AsyncByteStreamReader {
         return null;
     }
     
+    /*
+     * Marks this instance as available for new operations.
+     */
     private void setIdle() {
         _mode = Mode.IDLE;
     }
 
+    /**
+     * Completes the EOF futures on this instance as well as on the underlying ring buffer normally. 
+     * Marks this instance as "idle".
+     */
     private void completeEOF() {
         _eof.complete(null);
         _byteRingBuffer.setEOF();
@@ -151,6 +168,11 @@ public class AsyncByteStreamReader {
         setIdle();
     }
     
+    /**
+     * Completes the EOF futures on this instance as well as on the underlying ring buffer exceptionally.
+     * Throws an {@link AsyncException} to notify the {@link WhenReady} framework that something has gone wrong.  
+     * Marks this instance as "idle".
+     */
     private void completeEOFExceptionallyAndThrow(Throwable ex) {
         _eof.completeExceptionally(ex);
         _byteRingBuffer.setEOF();
@@ -177,9 +199,6 @@ public class AsyncByteStreamReader {
         _mode = mode;
     }
 
-    /**
-     * Helper that checks an argument for null.
-     */
     private static void ensureArgumentNotNull(String argName, Object argValue) {
         if (argValue == null) {
             throw new IllegalArgumentException(String.format("Argument %1$s may not be null.", argName));

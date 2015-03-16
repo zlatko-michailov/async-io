@@ -3,16 +3,66 @@ package org.michailov.async;
 import java.util.concurrent.*;
 import java.util.function.*;
 
+/**
+ * This class enables async processing of sync APIs. 
+ * For instance, one can process plain old sync InputStream's asynchronously. 
+ * <p>
+ * Three ways to hook async processing on sync APIs are offered:
+ * <ul>
+ * <li> {@link #completeAsync completeAsync} - returns a future that gets completed when a predicate reports that a sync API 
+ * is ready to be consumed without blocking. The caller can hook any continuation on the returned future. 
+ * This is the lowest-level pattern. It offers the highest degree of flexibility.
+ *   
+ * <li> {@link #applyAsync applyAsync} - executes a sync action asynchronously once a predicate reports that the action is 
+ * ready to be called. The returned future gets completed after the action has executed and finished. 
+ * This is implemented as a continuation of {@link #completeAsync} that executes the given action.
+ *      
+ * <li> {@link #startApplyLoopAsync startApplyLoopAsync} - starts executing a sync action asynchronously once a predicate 
+ * reports that the action is ready to be called, and continues until another predicate reports that the action should no 
+ * longer be called. The returned future gets completed after the loop has finished. 
+ * This is implemented as a loop of {@link #completeAsync} and a continuation that executes the given action.
+ * </ul>
+ * 
+ * @author  Zlatko Michailov
+ */
 public final class WhenReady {
     
     private static final String TIMEOUT_MESSAGE = "Operation timed out.";
     private static final ForkJoinPool THREAD_POOL = ForkJoinPool.commonPool();
-    private static final AsyncOptions DEFAULT_ASYNC_OPTIONS = new AsyncOptions();
 
+    /**
+     * This class offers only static methods. 
+     */
+    private WhenReady() {
+    }
+
+    /**
+     * Returns a future that gets completed with a value of <i>result</i> when the <i>ready</i> predicate returns true.
+     * <p>
+     * This overload uses default {@link AsyncOptions}. 
+     * 
+     * @param <S>           Type of <i>state</i> passed in to <i>ready</i>.
+     * @param <R>           Type of <i>result</i> set on the future upon completion.
+     * @param ready         A predicate that should return true when a given sync API is ready to be consumed without blocking.
+     * @param result        The value that should be set on the future upon completion.
+     * @param state         State that is passed to the predicate in order for it to make the right decision. May be null. 
+     * @return              A future that will get completed with a value of <i>result</i> when the <i>ready</i> predicate returns true.
+     */
     public static <S, R> CompletableFuture<R> completeAsync(Predicate<S> ready, R result, S state) {
-        return completeAsync(ready, result, state, DEFAULT_ASYNC_OPTIONS);
+        return completeAsync(ready, result, state, AsyncOptions.DEFAULT);
     }
     
+    /**
+     * Returns a future that gets completed with a value of <i>result</i> when the <i>ready</i> predicate returns true.
+     * 
+     * @param <S>           Type of <i>state</i> passed in to <i>ready</i>.
+     * @param <R>           Type of <i>result</i> set on the future upon completion.
+     * @param ready         A predicate that should return true when a given sync API is ready to be consumed without blocking.
+     * @param result        The value that should be set on the future upon completion.
+     * @param state         State that is passed to the predicate in order for it to make the right decision. May be null. 
+     * @param asyncOptions  {@link AsyncOptions} that control this async call. 
+     * @return              A future that will get completed with a value of <i>result</i> when the <i>ready</i> predicate returns true.
+     */
     public static <S, R> CompletableFuture<R> completeAsync(Predicate<S> ready, R result, S state, AsyncOptions asyncOptions) {
         ensureArgumentNotNull("ready", ready);
         ensureArgumentNotNull("asyncOptions", asyncOptions);
@@ -22,19 +72,73 @@ public final class WhenReady {
         return completeAsync(future, args);
     }
     
+    /**
+     * Returns a future that represents the continuation of {@link #completeAsync} that executes
+     * <i>action</i>. The returned future gets completed with the result of <i>action</i>. 
+     * <p>
+     * This overload uses default {@link AsyncOptions}. 
+     * 
+     * @param <S>           Type of <i>state</i> passed in to <i>ready</i> as well as to <i>action</i>.
+     * @param <R>           Type of the result returned from <i>action</i> set on the future upon completion.
+     * @param ready         A predicate that should return true when a given sync API is ready to be consumed without blocking.
+     * @param action        A function that gets called once <i>ready</i> returns true, and whose result is used to complete the returned future.
+     * @param state         State that is passed to <i>ready</i> as well as to <i>action</i>. May be null. 
+     * @return              A future that will get completed with the result returned from <i>action</i> when the <i>ready</i> predicate returns true.
+     */
     public static <S, R> CompletableFuture<R> applyAsync(Predicate<S> ready, Function<S, R> action, S state) {
-        return applyAsync(ready, action, state, DEFAULT_ASYNC_OPTIONS);
+        return applyAsync(ready, action, state, AsyncOptions.DEFAULT);
     }
     
+    /**
+     * Returns a future that represents the continuation of {@link #completeAsync} that executes
+     * <i>action</i>. The returned future gets completed with the result of <i>action</i>. 
+     * 
+     * @param <S>           Type of <i>state</i> passed in to <i>ready</i> as well as to <i>action</i>.
+     * @param <R>           Type of the result returned from <i>action</i> set on the future upon completion.
+     * @param ready         A predicate that should return true when a given sync API is ready to be consumed without blocking.
+     * @param action        A function that gets called once <i>ready</i> returns true, and whose result is used to complete the returned future.
+     * @param state         State that is passed to <i>ready</i> as well as to <i>action</i>. May be null. 
+     * @param asyncOptions  {@link AsyncOptions} that control this async call. 
+     * @return              A future that will get completed with the result returned from <i>action</i> when the <i>ready</i> predicate returns true.
+     */
     public static <S, R> CompletableFuture<R> applyAsync(Predicate<S> ready, Function<S, R> action, S state, AsyncOptions asyncOptions) {
         final Predicate<S> DONE_PERMANENTLY = s -> true;
         return startApplyLoopAsync(ready, DONE_PERMANENTLY, action, state, asyncOptions);
     }
     
+    /**
+     * Returns a future that represents a loop of continuations of {@link #completeAsync} that execute
+     * <i>action</i>. The loop ends when <i>done</i> returns true. 
+     * The returned future gets completed with the result from the last invocation of <i>action</i>. 
+     * <p>
+     * This overload uses default {@link AsyncOptions}. 
+     * 
+     * @param <S>           Type of <i>state</i> passed in to <i>ready</i> as well as to <i>action</i>.
+     * @param <R>           Type of the result returned from <i>action</i> set on the future upon completion.
+     * @param ready         A predicate that should return true when a given sync API is ready to be consumed without blocking.
+     * @param done          A predicate that should return true when a given sync API should no longer be consumed.
+     * @param action        A function that gets called once <i>ready</i> returns true, and whose result is used to complete the returned future.
+     * @param state         State that is passed to <i>ready</i> as well as to <i>action</i>. May be null. 
+     * @return              A future that will get completed with the result returned from <i>action</i> when the <i>ready</i> predicate returns true.
+     */
     public static <S, R> CompletableFuture<R> startApplyLoopAsync(Predicate<S> ready, Predicate<S> done, Function<S, R> action, S state) {
-        return startApplyLoopAsync(ready, done, action, state, DEFAULT_ASYNC_OPTIONS);
+        return startApplyLoopAsync(ready, done, action, state, AsyncOptions.DEFAULT);
     }
     
+    /**
+     * Returns a future that represents a loop of continuations of {@link #completeAsync} that execute
+     * <i>action</i>. The loop ends when <i>done</i> returns true. 
+     * The returned future gets completed with the result from the last invocation of <i>action</i>. 
+     * 
+     * @param <S>           Type of <i>state</i> passed in to <i>ready</i> as well as to <i>action</i>.
+     * @param <R>           Type of the result returned from <i>action</i> set on the future upon completion.
+     * @param ready         A predicate that should return true when a given sync API is ready to be consumed without blocking.
+     * @param done          A predicate that should return true when a given sync API should no longer be consumed.
+     * @param action        A function that gets called once <i>ready</i> returns true, and whose result is used to complete the returned future.
+     * @param state         State that is passed to <i>ready</i> as well as to <i>action</i>. May be null. 
+     * @param asyncOptions  {@link AsyncOptions} that control this async call. 
+     * @return              A future that will get completed with the result returned from <i>action</i> when the <i>ready</i> predicate returns true.
+     */
     public static <S, R> CompletableFuture<R> startApplyLoopAsync(Predicate<S> ready, Predicate<S> done, Function<S, R> action, S state, AsyncOptions asyncOptions) {
         ensureArgumentNotNull("ready", ready);
         ensureArgumentNotNull("done", done);
@@ -46,6 +150,9 @@ public final class WhenReady {
         return startApplyLoopAsync(future, args);
     }
     
+    /**
+     * Shared implementation of all {@link #applyAsync} and {@link #startApplyLoop} overloads. 
+     */
     private static <S, R> CompletableFuture<R> startApplyLoopAsync(CompletableFuture<R> future, WhenReadyArguments<S, R> args) {
         if (mustExit(future, args)) {
             return future;
@@ -58,6 +165,9 @@ public final class WhenReady {
         return future;
     }
     
+    /**
+     * Shared implementation of all {@link #completeAsync} overloads. 
+     */
     private static <S, R> CompletableFuture<R> completeAsync(CompletableFuture<R> future, WhenReadyArguments<S, R> args) {
         try {
             if (!mustExit(future, args)) {
@@ -76,6 +186,9 @@ public final class WhenReady {
         return future;
     }
     
+    /**
+     * Continuation of {@link #completeAsync} for all {@link #applyAsync} and {@link #startApplyLoop} overloads.
+     */
     private static<S, R> void applyLoopAsync(CompletableFuture<R> future, WhenReadyArguments<S, R> args, Throwable exception) {
         try {
             if (exception != null) {
@@ -99,6 +212,9 @@ public final class WhenReady {
         }
     }
     
+    /**
+     * Checks whether an apply loop must exit. 
+     */
     private static<S, R> boolean mustExit(CompletableFuture<R> future, WhenReadyArguments<S, R> args) {
         if (future.isDone()) {
             return true;
@@ -115,6 +231,9 @@ public final class WhenReady {
         return false;
     }
     
+    /**
+     * "Safe" methods must not throw. 
+     */
     private static<R> void completeFutureSafe(CompletableFuture<R> future, R result) {
         try {
             if (future != null && !future.isDone()) {
@@ -126,6 +245,9 @@ public final class WhenReady {
         }
     }
     
+    /**
+     * "Safe" methods must not throw. 
+     */
     private static<R> void completeFutureExceptionallySafe(CompletableFuture<R> future, Throwable exception) {
         try {
             if (future != null && !future.isDone()) {
@@ -137,9 +259,6 @@ public final class WhenReady {
         }
     }
     
-    /**
-     * Helper that checks an argument for null.
-     */
     private static void ensureArgumentNotNull(String argName, Object argValue) {
         if (argValue == null) {
             throw new IllegalArgumentException(String.format("Argument %1$s may not be null.", argName));
