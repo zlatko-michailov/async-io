@@ -6,9 +6,8 @@ import java.util.concurrent.*;
 
 class InputStreamSimulator extends InputStream {
     
-    static final String CONTENT = 
-            "Добри дошли в очарователни�? �?в�?т на а�?инхронното програмиране! " +
-            "Welcome to the exciting world of asynchronous programming! ";
+    static final String CONTENT = "Добри дошли Welcome в to очарователния the exciting свят world " +
+                                  "на of асинхронното asynchronous програмиране programming!";
     static final String CHARSET_NAME = "UTF-8";
     static final byte[] CONTENT_BYTES = CONTENT.getBytes(Charset.forName(CHARSET_NAME));
     static final int CONTENT_BYTES_LENGTH = CONTENT_BYTES.length;

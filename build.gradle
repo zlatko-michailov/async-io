@@ -1,6 +1,25 @@
 apply plugin: 'eclipse'
 apply plugin: 'java'
 
+
+// ---------------------------------------------------------------------
+// Compilation
+// ---------------------------------------------------------------------
+repositories {
+   mavenCentral()
+}
+
+dependencies {
+    testCompile 'junit:junit:4.12'
+}
+
+compileJava.options.encoding = 'UTF-8'
+compileTestJava.options.encoding = 'UTF-8'
+
+
+// ---------------------------------------------------------------------
+// Packaging
+// ---------------------------------------------------------------------
 def specTitle     = 'Async I/O'
 def specVersion   = '0.1'
 def specVendor    = 'Zlatko Michailov <zlatko+async@michailov.org>'
@@ -27,22 +46,18 @@ jar {
     }
 }
 
-repositories {
-   mavenCentral()
-}
 
-dependencies {
-    testCompile 'junit:junit:4.12'
-}
-
+// ---------------------------------------------------------------------
+// Testing
+// ---------------------------------------------------------------------
 test {
     afterTest { descriptor, result ->
         def testName = descriptor.getClassName() + " : " + descriptor.getName();
         if (result.getFailedTestCount() == 0) {
-            logger.lifecycle("[Passed] " + testName);
+            logger.lifecycle("[ Passed ] " + testName);
         }
         else {
-            logger.lifecycle("[FAILED] " + testName);
+            logger.lifecycle("[=FAILED=] " + testName);
         }
     }
 }

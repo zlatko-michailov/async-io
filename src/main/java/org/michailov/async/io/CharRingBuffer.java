@@ -4,7 +4,7 @@ public class CharRingBuffer extends RingBuffer {
 
     private static final int NOT_AVAILABLE = -1;
     
-    char[] _buffer;
+    private final char[] _buffer;
     
     public CharRingBuffer(int capacity) {
         this(new char[capacity]);
@@ -21,7 +21,11 @@ public class CharRingBuffer extends RingBuffer {
     }
     
     public int peek(int delta) {
-        if (getAvailableToRead() < delta) {
+        if (delta < 0) {
+            throw new IllegalArgumentException("Argument delta may not be negative.");
+        }
+        
+        if (getAvailableToRead() <= delta) {
             return NOT_AVAILABLE;
         }
         
@@ -31,7 +35,7 @@ public class CharRingBuffer extends RingBuffer {
     }
     
     public int read() {
-        int p = peek(1);
+        int p = peek(0);
         if (p == NOT_AVAILABLE) {
             return NOT_AVAILABLE;
         }
@@ -41,11 +45,11 @@ public class CharRingBuffer extends RingBuffer {
     }
     
     public int write(char c) {
-        if (getAvailableToWrite() < 1) {
+        if (getAvailableToWrite() <= 0) {
             return NOT_AVAILABLE;
         }
         
-        int i = (getWritePosition() + 1) % getBufferLength();
+        int i = getWritePosition();
         _buffer[i] = c;
 
         advanceWritePosition(1);
