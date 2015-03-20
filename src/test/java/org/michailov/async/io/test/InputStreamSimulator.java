@@ -8,8 +8,7 @@ class InputStreamSimulator extends InputStream {
     
     static final String CONTENT = "Добри дошли Welcome в to очарователния the exciting свят world " +
                                   "на of асинхронното asynchronous програмиране programming!";
-    static final String CHARSET_NAME = "UTF-8";
-    static final byte[] CONTENT_BYTES = CONTENT.getBytes(Charset.forName(CHARSET_NAME));
+    static final byte[] CONTENT_BYTES = CONTENT.getBytes(StandardCharsets.UTF_8);
     static final int CONTENT_BYTES_LENGTH = CONTENT_BYTES.length;
     
     private static final int EOF = -1;
