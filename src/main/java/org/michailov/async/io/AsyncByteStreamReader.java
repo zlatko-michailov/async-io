@@ -2,6 +2,7 @@ package org.michailov.async.io;
 
 import java.io.*;
 import java.util.concurrent.*;
+
 import org.michailov.async.*;
 
 /**
@@ -20,16 +21,11 @@ import org.michailov.async.*;
  * 
  * @author  Zlatko Michailov
  */
-public class AsyncByteStreamReader {
-    
-    private static final int EOF = -1;
+public class AsyncByteStreamReader extends Worker {
     
     private final InputStream _inputStream;
     private final ByteRingBuffer _byteRingBuffer;
     private final AsyncOptions _asyncOptions;
-    private final CompletableFuture<Void> _eof;
-    
-    private Mode _mode;
     
     /**
      * Constructs a new AsyncByteStreamReader instance to read from the given InputStream
@@ -47,8 +43,6 @@ public class AsyncByteStreamReader {
         _inputStream = inputStream;
         _byteRingBuffer = byteRingBuffer;
         _asyncOptions = asyncOptions;
-        _eof = new CompletableFuture<Void>();
-        _mode = Mode.IDLE;
     }
     
     /**
@@ -58,15 +52,6 @@ public class AsyncByteStreamReader {
      */
     public InputStream getInputStream() {
         return _inputStream;
-    }
-    
-    /**
-     * Returns a future that completes when the reader reaches the end of the stream.
-     * 
-     * @return  A future that completes when the reader reaches the end of the stream..
-     */
-    public CompletableFuture<Void> getEOF() {
-        return _eof;
     }
     
     /**
@@ -84,7 +69,7 @@ public class AsyncByteStreamReader {
      * @return  A future that completes when either some bytes have been read or an exception has occurred.
      */
     public CompletableFuture<Void> readAsync() {
-        ensureReadableState(Mode.ONCE);
+        ensureReadableState(WorkerMode.ONCE);
 
         return WhenReady.applyAsync(reader -> reader.canRead(), reader -> reader.read(), this, _asyncOptions);
     }
@@ -95,7 +80,7 @@ public class AsyncByteStreamReader {
      * @return  A future that completes when the loop is finished either due to reaching EOF or due to an exception.
      */
     public CompletableFuture<Void> startReadingLoopAsync() {
-        ensureReadableState(Mode.LOOP);
+        ensureReadableState(WorkerMode.LOOP);
 
         return WhenReady.startApplyLoopAsync(reader -> reader.canRead(), reader -> reader._eof.isDone(), reader -> reader.read(), this, _asyncOptions);
     }
@@ -136,7 +121,7 @@ public class AsyncByteStreamReader {
                         _byteRingBuffer.advanceWritePosition(actualByteCount);
                         
                         // If this was a one-time read, become idle.
-                        if (_mode == Mode.ONCE) {
+                        if (_mode == WorkerMode.ONCE) {
                             setIdle();
                         }
                     }
@@ -150,22 +135,13 @@ public class AsyncByteStreamReader {
         return null;
     }
     
-    /*
-     * Marks this instance as available for new operations.
-     */
-    private void setIdle() {
-        _mode = Mode.IDLE;
-    }
-
     /**
-     * Completes the EOF futures on this instance as well as on the underlying ring buffer normally. 
+     * Completes the EOF future on this instance as well as on the underlying ring buffer normally. 
      * Marks this instance as "idle".
      */
-    private void completeEOF() {
-        _eof.complete(null);
+    protected void completeEOF() {
         _byteRingBuffer.setEOF();
-        
-        setIdle();
+        super.completeEOF();
     }
     
     /**
@@ -173,42 +149,9 @@ public class AsyncByteStreamReader {
      * Throws an {@link AsyncException} to notify the {@link WhenReady} framework that something has gone wrong.  
      * Marks this instance as "idle".
      */
-    private void completeEOFExceptionallyAndThrow(Throwable ex) {
-        _eof.completeExceptionally(ex);
+    protected void completeEOFExceptionallyAndThrow(Throwable ex) {
         _byteRingBuffer.setEOF();
-        
-        setIdle();
-        
-        throw new AsyncException(ex);
-    }
-    
-    /**
-     * Ensures the state is good for starting a new read operation.
-     */
-    private void ensureReadableState(Mode mode) {
-        // The reader must be in idle mode.
-        if (_mode != Mode.IDLE) {
-            throw new IllegalStateException("There is already an operation in progress. Await for the returned CompletableFuture to complete, and then retry.");
-        }
-        
-        // If EOF has already been reached, the caller shouldn't have continued.
-        if (_eof.isDone()) {
-            throw new IllegalStateException("Attempting to read past the end of stream.");
-        }
-        
-        _mode = mode;
-    }
-
-    private static void ensureArgumentNotNull(String argName, Object argValue) {
-        if (argValue == null) {
-            throw new IllegalArgumentException(String.format("Argument %1$s may not be null.", argName));
-        }
-    }
-    
-    private enum Mode {
-        IDLE,
-        ONCE,
-        LOOP
+        super.completeEOFExceptionallyAndThrow(ex);
     }
     
 }
