@@ -37,8 +37,8 @@ public class AsyncByteStreamReader extends AsyncAgent {
     public AsyncByteStreamReader(InputStream inputStream, ByteRingBuffer byteRingBuffer, AsyncOptions asyncOptions) {
         super(asyncOptions);
         
-        ensureArgumentNotNull("inputStream", inputStream);
-        ensureArgumentNotNull("byteRingBuffer", byteRingBuffer);
+        Util.ensureArgumentNotNull("inputStream", inputStream);
+        Util.ensureArgumentNotNull("byteRingBuffer", byteRingBuffer);
         
         _inputStream = inputStream;
         _byteRingBuffer = byteRingBuffer;
@@ -62,12 +62,17 @@ public class AsyncByteStreamReader extends AsyncAgent {
         return _byteRingBuffer;
     }
     
+    /**
+     * Checks whether this reader has reached EOF of the stream.
+     * 
+     * @return  true iff EOF has been reached or an exception has been encountered.
+     */
     public boolean isEOF() {
         return _byteRingBuffer.isEOF();
     }
 
     /**
-     * 'ready' predicate that returns true iff bytes can be read from the stream and written to the ring buffer without blocking.   
+     * "<i>ready</i>" predicate that returns true when bytes can be read from the stream and written to the ring buffer without blocking.   
      */
     @Override
     protected boolean ready() {
@@ -84,15 +89,18 @@ public class AsyncByteStreamReader extends AsyncAgent {
     }
     
     @Override
+    /**
+     * "<i>done</i>" predicate that returns true when this async agent wants to quit the current async loop.   
+     */
     protected boolean done() {
         return isEOF();
     }
     
     /**
-     * 'action' function that reads bytes from the stream and writes them to the ring buffer.   
+     * "<i>action</i>" function that reads bytes from the stream and writes them to the ring buffer.   
      */
     @Override
-    protected void apply() {
+    protected void action() {
         try {
             int availableByteCount = _inputStream.available();
             if (availableByteCount > 0) {
@@ -117,8 +125,8 @@ public class AsyncByteStreamReader extends AsyncAgent {
     }
     
     /**
-     * Completes the EOF future on this instance as well as on the underlying ring buffer normally. 
-     * Marks this instance as "idle".
+     * Sets the EOF status on this instance as well as on the underlying ring buffer to true. 
+     * Marks this instance as 'idle'.
      */
     protected void setEOF() {
         _byteRingBuffer.setEOF();
@@ -126,9 +134,9 @@ public class AsyncByteStreamReader extends AsyncAgent {
     }
     
     /**
-     * Completes the EOF futures on this instance as well as on the underlying ring buffer exceptionally.
+     * Sets the EOF status on this instance as well as on the underlying ring buffer to true. 
      * Throws an {@link AsyncException} to notify the {@link WhenReady} framework that something has gone wrong.  
-     * Marks this instance as "idle".
+     * Marks this instance as 'idle'.
      * 
      * @param   ex  An exception to complete with.
      */

@@ -7,41 +7,71 @@ public abstract class AsyncAgent {
 
     private static final Predicate<AsyncAgent> READY = agent -> agent.ready();
     private static final Predicate<AsyncAgent> DONE = agent -> agent.done();
-    private static final Function<AsyncAgent, Void> APPLY = agent -> agent.applyWrapper();
+    private static final Function<AsyncAgent, Void> ACTION = agent -> agent.actionWrapper();
     
-    protected final AsyncOptions _asyncOptions;
-    protected AgentMode _mode;
+    private final AsyncOptions _asyncOptions;
+    private AgentMode _mode;
     
+    /**
+     * Base constructor for derived classes to call. 
+     * 
+     * @param   asyncOptions    {@link AsyncOptions} that will control all async operations on this agent. 
+     */
     protected AsyncAgent(AsyncOptions asyncOptions) {
-        ensureArgumentNotNull("asyncOptions", asyncOptions);
+        Util.ensureArgumentNotNull("asyncOptions", asyncOptions);
         
         this._asyncOptions = asyncOptions;
         this._mode = AgentMode.IDLE;
     }
     
+    /**
+     * Starts a new {@link WhenReady#applyAsync} operation.
+     * 
+     * @return      A future that will get completed with the result returned from {@link #action} when the {@link #ready} predicate returns true.
+     */
     public CompletableFuture<Void> applyAsync() {
         ensureMode(AgentMode.ONCE);
-        return WhenReady.applyAsync(READY, APPLY, this, _asyncOptions);
+        return WhenReady.applyAsync(READY, ACTION, this, _asyncOptions);
     }
     
+    /**
+     * Starts a new {@link WhenReady#startApplyLoopAsync} operation.
+     * 
+     * @return      A future that will get completed with the result returned from the last execution of {@link #action}.
+     */
     public CompletableFuture<Void> startApplyLoopAsync() {
         ensureMode(AgentMode.LOOP);
-        return WhenReady.startApplyLoopAsync(READY, DONE, APPLY, this, _asyncOptions);
+        return WhenReady.startApplyLoopAsync(READY, DONE, ACTION, this, _asyncOptions);
     }
     
+    /**
+     * The '<i>ready</i>' predicate passed to {@link WhenReady#completeAsync}, {@link WhenReady#applyAsync}, or {@link WhenReady#startApplyLoopAsync}.
+     * 
+     * @return      Derived classes should override this method to return true iff it is time to execute {@link #action}.
+     */
     protected boolean ready() {
         return false;
     }
     
+    /**
+     * The '<i>done</i>' predicate passed to {@link WhenReady#startApplyLoopAsync}.
+     * 
+     * @return      Derived classes should override this method to return true iff it is time for the loop to stop.
+     */
     protected boolean done() {
         return true;
     }
     
-    protected void apply() {
+    /**
+     * The '<i>action</i>' function passed to {@link WhenReady#applyAsync} or {@link WhenReady#startApplyLoopAsync}.
+     * <p>
+     * Derived classes should override this method.
+     */
+    protected void action() {
     }
     
-    private Void applyWrapper() {
-        apply();
+    private Void actionWrapper() {
+        action();
         
         // If this was a one-time operation, become idle.
         if (_mode == AgentMode.ONCE) {
@@ -51,8 +81,8 @@ public abstract class AsyncAgent {
         return null;
     }
     
-    /*
-     * Marks this agent as "idle".
+    /**
+     * Marks this agent as 'idle'.
      */
     protected void setIdle() {
         _mode = AgentMode.IDLE;
@@ -60,7 +90,7 @@ public abstract class AsyncAgent {
 
     /**
      * Throws an {@link AsyncException} to notify the {@link WhenReady} framework that something has gone wrong.  
-     * Marks this agent as "idle".
+     * Marks this agent as 'idle'.
      * 
      * @param   ex  An exception to complete with.
      */
@@ -70,29 +100,17 @@ public abstract class AsyncAgent {
     }
     
     /**
-     * Ensures the mode is good for starting a new operation.
+     * Ensures the current mode is good for starting a new operation.
      * 
      * @param   mode    The mode of the operation.
      */
-    protected void ensureMode(AgentMode mode) {
+    private void ensureMode(AgentMode mode) {
         // The agent must be in idle mode.
         if (_mode != AgentMode.IDLE) {
             throw new IllegalStateException("There is already an operation in progress. Await for the returned CompletableFuture to complete, and then retry.");
         }
         
         _mode = mode;
-    }
-
-    /**
-     * Ensures the value for the given argument is not null. Throws if it is.
-     * 
-     * @param   argName     Name of the argument that is being checked.
-     * @param   argValue    Value that is being checked.
-     */
-    protected static void ensureArgumentNotNull(String argName, Object argValue) {
-        if (argValue == null) {
-            throw new IllegalArgumentException(String.format("Argument %1$s may not be null.", argName));
-        }
     }
 
 }

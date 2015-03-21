@@ -38,7 +38,7 @@ public abstract class RingBuffer {
      * Gets the EOF state of this ring buffer.
      * The EOF state is explicitly set by a writing client. 
      * 
-     * @return  ture iff no more bytes will be written to this ring buffer.
+     * @return  true iff no more bytes will be written to this ring buffer.
      */
     public boolean isEOF() {
         return _eof;

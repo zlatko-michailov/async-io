@@ -64,8 +64,8 @@ public final class WhenReady {
      * @return              A future that will get completed with a value of <i>result</i> when the <i>ready</i> predicate returns true.
      */
     public static <S, R> CompletableFuture<R> completeAsync(Predicate<S> ready, R result, S state, AsyncOptions asyncOptions) {
-        ensureArgumentNotNull("ready", ready);
-        ensureArgumentNotNull("asyncOptions", asyncOptions);
+        Util.ensureArgumentNotNull("ready", ready);
+        Util.ensureArgumentNotNull("asyncOptions", asyncOptions);
 
         CompletableFuture<R> future = new CompletableFuture<R>();
         WhenReadyArguments<S, R> args = new WhenReadyArguments<S, R>(ready, result, state, asyncOptions);
@@ -119,7 +119,7 @@ public final class WhenReady {
      * @param done          A predicate that should return true when a given sync API should no longer be consumed.
      * @param action        A function that gets called once <i>ready</i> returns true, and whose result is used to complete the returned future.
      * @param state         State that is passed to <i>ready</i> as well as to <i>action</i>. May be null. 
-     * @return              A future that will get completed with the result returned from <i>action</i> when the <i>ready</i> predicate returns true.
+     * @return              A future that will get completed with the result returned from the last execution of <i>action</i>.
      */
     public static <S, R> CompletableFuture<R> startApplyLoopAsync(Predicate<S> ready, Predicate<S> done, Function<S, R> action, S state) {
         return startApplyLoopAsync(ready, done, action, state, AsyncOptions.DEFAULT);
@@ -137,13 +137,13 @@ public final class WhenReady {
      * @param action        A function that gets called once <i>ready</i> returns true, and whose result is used to complete the returned future.
      * @param state         State that is passed to <i>ready</i> as well as to <i>action</i>. May be null. 
      * @param asyncOptions  {@link AsyncOptions} that control this async call. 
-     * @return              A future that will get completed with the result returned from <i>action</i> when the <i>ready</i> predicate returns true.
+     * @return              A future that will get completed with the result returned from the last execution of <i>action</i>.
      */
     public static <S, R> CompletableFuture<R> startApplyLoopAsync(Predicate<S> ready, Predicate<S> done, Function<S, R> action, S state, AsyncOptions asyncOptions) {
-        ensureArgumentNotNull("ready", ready);
-        ensureArgumentNotNull("done", done);
-        ensureArgumentNotNull("action", action);
-        ensureArgumentNotNull("asyncOptions", asyncOptions);
+        Util.ensureArgumentNotNull("ready", ready);
+        Util.ensureArgumentNotNull("done", done);
+        Util.ensureArgumentNotNull("action", action);
+        Util.ensureArgumentNotNull("asyncOptions", asyncOptions);
         
         CompletableFuture<R> future = new CompletableFuture<R>();
         WhenReadyArguments<S, R> args = new WhenReadyArguments<S, R>(ready, done, action, state, asyncOptions);
@@ -259,11 +259,5 @@ public final class WhenReady {
         }
     }
     
-    private static void ensureArgumentNotNull(String argName, Object argValue) {
-        if (argValue == null) {
-            throw new IllegalArgumentException(String.format("Argument %1$s may not be null.", argName));
-        }
-    }
-
 }
 
