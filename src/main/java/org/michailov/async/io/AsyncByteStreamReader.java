@@ -1,8 +1,6 @@
 package org.michailov.async.io;
 
 import java.io.*;
-import java.util.concurrent.*;
-
 import org.michailov.async.*;
 
 /**
@@ -21,11 +19,12 @@ import org.michailov.async.*;
  * 
  * @author  Zlatko Michailov
  */
-public class AsyncByteStreamReader extends Worker {
+public class AsyncByteStreamReader extends AsyncAgent {
+    
+    protected static final int EOF = -1;
     
     private final InputStream _inputStream;
     private final ByteRingBuffer _byteRingBuffer;
-    private final AsyncOptions _asyncOptions;
     
     /**
      * Constructs a new AsyncByteStreamReader instance to read from the given InputStream
@@ -36,13 +35,13 @@ public class AsyncByteStreamReader extends Worker {
      * @param   asyncOptions    {@link AsyncOptions} that will control all async operations on this instance. 
      */
     public AsyncByteStreamReader(InputStream inputStream, ByteRingBuffer byteRingBuffer, AsyncOptions asyncOptions) {
+        super(asyncOptions);
+        
         ensureArgumentNotNull("inputStream", inputStream);
         ensureArgumentNotNull("byteRingBuffer", byteRingBuffer);
-        ensureArgumentNotNull("asyncOptions", asyncOptions);
         
         _inputStream = inputStream;
         _byteRingBuffer = byteRingBuffer;
-        _asyncOptions = asyncOptions;
     }
     
     /**
@@ -62,49 +61,38 @@ public class AsyncByteStreamReader extends Worker {
     public ByteRingBuffer getByteRingBuffer() {
         return _byteRingBuffer;
     }
-
-    /**
-     * Reads bytes from the stream and writes them into the ring buffer.
-     * 
-     * @return  A future that completes when either some bytes have been read or an exception has occurred.
-     */
-    public CompletableFuture<Void> readAsync() {
-        ensureReadableState(WorkerMode.ONCE);
-
-        return WhenReady.applyAsync(reader -> reader.canRead(), reader -> reader.read(), this, _asyncOptions);
-    }
     
-    /**
-     * Starts a loop that read bytes from the stream and writes them into the ring buffer.
-     * 
-     * @return  A future that completes when the loop is finished either due to reaching EOF or due to an exception.
-     */
-    public CompletableFuture<Void> startReadingLoopAsync() {
-        ensureReadableState(WorkerMode.LOOP);
-
-        return WhenReady.startApplyLoopAsync(reader -> reader.canRead(), reader -> reader._eof.isDone(), reader -> reader.read(), this, _asyncOptions);
+    public boolean isEOF() {
+        return _byteRingBuffer.isEOF();
     }
-    
+
     /**
      * 'ready' predicate that returns true iff bytes can be read from the stream and written to the ring buffer without blocking.   
      */
-    private boolean canRead() {
+    @Override
+    protected boolean ready() {
         boolean isReady = false;
         
         try {
-            isReady = !_eof.isDone() && _inputStream.available() > 0 && _byteRingBuffer.getAvailableToWriteStraight() > 0;
+            isReady = !isEOF() && _inputStream.available() > 0 && _byteRingBuffer.getAvailableToWriteStraight() > 0;
         }
         catch (Throwable ex) {
-            completeEOFExceptionallyAndThrow(ex);
+            setEOFAndThrow(ex);
         }
         
         return isReady;
     }
     
+    @Override
+    protected boolean done() {
+        return isEOF();
+    }
+    
     /**
      * 'action' function that reads bytes from the stream and writes them to the ring buffer.   
      */
-    private Void read() {
+    @Override
+    protected void apply() {
         try {
             int availableByteCount = _inputStream.available();
             if (availableByteCount > 0) {
@@ -113,45 +101,40 @@ public class AsyncByteStreamReader extends Worker {
                 int actualByteCount = _inputStream.read(_byteRingBuffer.getBuffer(), _byteRingBuffer.getWritePosition(), targetByteCount);
                 if (actualByteCount != 0) {
                     if (actualByteCount == EOF) {
-                        completeEOF();
+                        setEOF();
                     }
                     else {
                         // Bytes were read from the stream and written into the ring buffer.
                         // Advance the ring buffer's write position.
                         _byteRingBuffer.advanceWritePosition(actualByteCount);
-                        
-                        // If this was a one-time read, become idle.
-                        if (_mode == WorkerMode.ONCE) {
-                            setIdle();
-                        }
                     }
                 }
             }
         }
         catch (Throwable ex) {
-            completeEOFExceptionallyAndThrow(ex);
+            setEOFAndThrow(ex);
         }
-        
-        return null;
     }
     
     /**
      * Completes the EOF future on this instance as well as on the underlying ring buffer normally. 
      * Marks this instance as "idle".
      */
-    protected void completeEOF() {
+    protected void setEOF() {
         _byteRingBuffer.setEOF();
-        super.completeEOF();
+        setIdle();
     }
     
     /**
      * Completes the EOF futures on this instance as well as on the underlying ring buffer exceptionally.
      * Throws an {@link AsyncException} to notify the {@link WhenReady} framework that something has gone wrong.  
      * Marks this instance as "idle".
+     * 
+     * @param   ex  An exception to complete with.
      */
-    protected void completeEOFExceptionallyAndThrow(Throwable ex) {
+    protected void setEOFAndThrow(Throwable ex) {
         _byteRingBuffer.setEOF();
-        super.completeEOFExceptionallyAndThrow(ex);
+        setIdleAndThrow(ex);
     }
     
 }

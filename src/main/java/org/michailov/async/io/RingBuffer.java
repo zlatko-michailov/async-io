@@ -40,7 +40,7 @@ public abstract class RingBuffer {
      * 
      * @return  ture iff no more bytes will be written to this ring buffer.
      */
-    public boolean getEOF() {
+    public boolean isEOF() {
         return _eof;
     }
     

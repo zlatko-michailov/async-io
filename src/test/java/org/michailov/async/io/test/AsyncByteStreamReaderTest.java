@@ -82,6 +82,7 @@ public class AsyncByteStreamReaderTest {
         state.streamLength = streamLength;
         state.streamIndex = 0;
         state.testFuture = new CompletableFuture<Void>();
+        state.isLoop = isLoop;
         
         if (isLoop) {
             // Start a read loop.
@@ -107,8 +108,8 @@ public class AsyncByteStreamReaderTest {
         }
     }
     private static void readAndVerifyLoopAsync(TestReadAsyncState state) {
-        CompletableFuture<Void> future = state.reader.startReadingLoopAsync();
-        future.whenCompleteAsync((result, ex) -> {
+        state.operationFuture = state.reader.startApplyLoopAsync();
+        state.operationFuture.whenCompleteAsync((result, ex) -> {
             if (ex != null) {
                 // On exception - fail the test future.
                 state.testFuture.completeExceptionally(ex);
@@ -119,14 +120,14 @@ public class AsyncByteStreamReaderTest {
         
         // Start a verification loop.
         Predicate<TestReadAsyncState> ready = st -> st.ringBuffer.getAvailableToRead() > 0;
-        Predicate<TestReadAsyncState> done = st -> st.reader.getEOF().isDone() && st.ringBuffer.getAvailableToRead() == 0;
+        Predicate<TestReadAsyncState> done = st -> st.operationFuture.isDone() && st.ringBuffer.getAvailableToRead() == 0;
         Function<TestReadAsyncState, Void> action = st -> { verifyRingBuffer(st); return null; };
         WhenReady.startApplyLoopAsync(ready, done, action, state);
     }
     
     private static void readAndVerifyAsync(TestReadAsyncState state) {
-        CompletableFuture<Void> future = state.reader.readAsync();
-        future.whenCompleteAsync((result, ex) -> {
+        state.operationFuture = state.reader.applyAsync();
+        state.operationFuture.whenCompleteAsync((result, ex) -> {
             if (ex != null) {
                 // On exception - fail the test future.
                 state.testFuture.completeExceptionally(ex);
@@ -156,18 +157,17 @@ public class AsyncByteStreamReaderTest {
             state.streamIndex++;
         }
 
-        // Check the state of the reader.
-        CompletableFuture<Void> eof = state.reader.getEOF();
-        if (eof.isCompletedExceptionally()) {
-            // An exception has occurred. 
-            // Pass it to testFuture (without trying to get the result which would throw here.)
-            eof.whenComplete((res, th) -> {
+        // Check the operation for failure.
+        if (state.operationFuture.isCompletedExceptionally()) {
+            // Pass the exception to testFuture (without trying to get the result which would throw here.)
+            state.operationFuture.whenComplete((res, th) -> {
                     state.testFuture.completeExceptionally(th);
                 });
             return true;
         }
-        else if (eof.isDone()) {
-            // The reader has reached EOF.
+        
+        // Check the operation for completion.
+        else if ((state.isLoop && state.operationFuture.isDone()) || state.reader.isEOF()) {
             // Verify the stream length.
             System.out.println(String.format("Stream length: %1$d = %2$d", state.streamIndex, state.streamLength));
             if (state.streamIndex != state.streamLength) {
@@ -191,6 +191,8 @@ public class AsyncByteStreamReaderTest {
         int streamLength;
         int streamIndex;
         CompletableFuture<Void> testFuture;
+        CompletableFuture<Void> operationFuture;
+        boolean isLoop;
     }
 
 }
