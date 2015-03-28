@@ -2,8 +2,6 @@ package org.michailov.async.io;
 
 public class CharRingBuffer extends RingBuffer {
 
-    private static final int NOT_AVAILABLE = -1;
-    
     private final char[] _buffer;
     
     public CharRingBuffer(int capacity) {
@@ -26,7 +24,7 @@ public class CharRingBuffer extends RingBuffer {
         }
         
         if (getAvailableToRead() <= delta) {
-            return NOT_AVAILABLE;
+            return Util.EOF;
         }
         
         int i = (getReadPosition() + delta) % getBufferLength();
@@ -36,8 +34,8 @@ public class CharRingBuffer extends RingBuffer {
     
     public int read() {
         int p = peek(0);
-        if (p == NOT_AVAILABLE) {
-            return NOT_AVAILABLE;
+        if (p == Util.EOF) {
+            return Util.EOF;
         }
         
         advanceReadPosition(1);
@@ -46,7 +44,7 @@ public class CharRingBuffer extends RingBuffer {
     
     public int write(char c) {
         if (getAvailableToWrite() <= 0) {
-            return NOT_AVAILABLE;
+            return Util.EOF;
         }
         
         int i = getWritePosition();

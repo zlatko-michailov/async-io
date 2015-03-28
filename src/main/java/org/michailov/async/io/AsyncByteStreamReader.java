@@ -14,14 +14,13 @@ import org.michailov.async.*;
  * <p>
  * Note: The caller is responsible for opening and closing the stream as needed. 
  * 
- * @see     ByteRingBuffer
  * @see     WhenReady
+ * @see     AsyncAgent
+ * @see     ByteRingBuffer
  * 
  * @author  Zlatko Michailov
  */
 public class AsyncByteStreamReader extends AsyncAgent {
-    
-    protected static final int EOF = -1;
     
     private final InputStream _inputStream;
     private final ByteRingBuffer _byteRingBuffer;
@@ -108,7 +107,7 @@ public class AsyncByteStreamReader extends AsyncAgent {
                 int targetByteCount = Math.min(availableByteCount, _byteRingBuffer.getAvailableToWriteStraight());
                 int actualByteCount = _inputStream.read(_byteRingBuffer.getBuffer(), _byteRingBuffer.getWritePosition(), targetByteCount);
                 if (actualByteCount != 0) {
-                    if (actualByteCount == EOF) {
+                    if (actualByteCount == Util.EOF) {
                         setEOF();
                     }
                     else {
@@ -128,7 +127,7 @@ public class AsyncByteStreamReader extends AsyncAgent {
      * Sets the EOF status on this instance as well as on the underlying ring buffer to true. 
      * Marks this instance as 'idle'.
      */
-    protected void setEOF() {
+    private void setEOF() {
         _byteRingBuffer.setEOF();
         setIdle();
     }
@@ -140,7 +139,7 @@ public class AsyncByteStreamReader extends AsyncAgent {
      * 
      * @param   ex  An exception to complete with.
      */
-    protected void setEOFAndThrow(Throwable ex) {
+    private void setEOFAndThrow(Throwable ex) {
         _byteRingBuffer.setEOF();
         setIdleAndThrow(ex);
     }

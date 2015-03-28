@@ -7,8 +7,6 @@ package org.michailov.async.io;
  */
 public class ByteRingBuffer extends RingBuffer {
 
-    private static final int NOT_AVAILABLE = -1;
-    
     private final byte[] _buffer;
     
     /**
@@ -57,7 +55,7 @@ public class ByteRingBuffer extends RingBuffer {
         }
         
         if (getAvailableToRead() <= delta) {
-            return NOT_AVAILABLE;
+            return Util.EOF;
         }
         
         int i = (getReadPosition() + delta) % getBufferLength();
@@ -72,8 +70,8 @@ public class ByteRingBuffer extends RingBuffer {
      */
     public int read() {
         int p = peek(0);
-        if (p == NOT_AVAILABLE) {
-            return NOT_AVAILABLE;
+        if (p == Util.EOF) {
+            return Util.EOF;
         }
         
         advanceReadPosition(1);
@@ -88,7 +86,7 @@ public class ByteRingBuffer extends RingBuffer {
      */
     public int write(byte b) {
         if (getAvailableToWrite() <= 0) {
-            return NOT_AVAILABLE;
+            return Util.EOF;
         }
         
         int i = getWritePosition();

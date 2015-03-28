@@ -3,6 +3,14 @@ package org.michailov.async;
 import java.util.concurrent.*;
 import java.util.function.*;
 
+/**
+ * Abstract functionality that encapsulates context in which {@link WhenReady} patterns are called.
+ * This is a convenience base class for classes that perform async operations.
+ * 
+ * @see     WhenReady
+ * 
+ * @author  Zlatko Michailov
+ */
 public abstract class AsyncAgent {
 
     private static final Predicate<AsyncAgent> READY = agent -> agent.ready();

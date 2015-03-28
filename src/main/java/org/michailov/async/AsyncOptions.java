@@ -4,7 +4,6 @@ import java.util.concurrent.*;
 
 /**
  * Common options that control the execution of async methods from this package.
- * Currently, only timeout is supported. More options may be added in future.
  *  
  * @author Zlatko Michailov
  */
