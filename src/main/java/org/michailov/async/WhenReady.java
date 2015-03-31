@@ -20,7 +20,7 @@ import java.util.function.*;
  * <li> {@link #startApplyLoopAsync startApplyLoopAsync} - starts executing a sync action asynchronously once a predicate 
  * reports that the action is ready to be called, and continues until another predicate reports that the action should no 
  * longer be called. The returned future gets completed after the loop has finished. 
- * This is implemented as a loop of {@link #completeAsync} and a continuation that executes the given action.
+ * This is implemented as a loop of {@link #completeAsync} and a continuation that executes the given action. 
  * </ul>
  * 
  * @author  Zlatko Michailov
@@ -29,6 +29,7 @@ public final class WhenReady {
     
     private static final String TIMEOUT_MESSAGE = "Operation timed out.";
     private static final ForkJoinPool THREAD_POOL = ForkJoinPool.commonPool();
+    private static final int READY_TEST_THRESHOLD = 16;
 
     /**
      * This class offers only static methods. 
@@ -102,8 +103,7 @@ public final class WhenReady {
      * @return              A future that will get completed with the result returned from <i>action</i> when the <i>ready</i> predicate returns true.
      */
     public static <S, R> CompletableFuture<R> applyAsync(Predicate<S> ready, Function<S, R> action, S state, AsyncOptions asyncOptions) {
-        final Predicate<S> DONE_PERMANENTLY = s -> true;
-        return startApplyLoopAsync(ready, DONE_PERMANENTLY, action, state, asyncOptions);
+        return startApplyLoopAsync(ready, ready, action, state, asyncOptions);
     }
     
     /**
@@ -171,10 +171,17 @@ public final class WhenReady {
     private static <S, R> CompletableFuture<R> completeAsync(CompletableFuture<R> future, WhenReadyArguments<S, R> args) {
         try {
             if (!mustExit(future, args)) {
-                if (args.ready.test(args.state)) {
+                if (args.readyOrDone.test(args.state)) {
+                    args.readyTestCount = 0;
                     completeFutureSafe(future, args.result);
                 }
                 else {
+                    // Throttle re-scheduling.
+                    if (++args.readyTestCount % READY_TEST_THRESHOLD == 0) {
+                        long sleepMillis = args.readyTestCount;
+                        Thread.sleep(sleepMillis);
+                    }
+                    
                     THREAD_POOL.execute(() -> completeAsync(future, args));
                 }
             }
@@ -196,7 +203,13 @@ public final class WhenReady {
             }
             
             if (!mustExit(future, args)) {
-                R result = args.action.apply(args.state);
+                R result = null;
+                
+                // ready() is trulyReady() || done().
+                // apply() must be invoked only if trulyReady().
+                if (args.ready.test(args.state)) {
+                    result = args.action.apply(args.state);
+                }
                 
                 if (args.done.test(args.state)) {
                     completeFutureSafe(future, result);

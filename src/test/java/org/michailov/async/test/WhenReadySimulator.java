@@ -32,7 +32,7 @@ class WhenReadySimulator {
     }
     
     static boolean done(WhenReadySimulator simulator) {
-        return simulator._actionCount >= simulator._doneAfterCount;
+        return simulator._doneAfterCount > 0 && simulator._actionCount >= simulator._doneAfterCount;
     }
     
     static int action(WhenReadySimulator simulator) {

@@ -104,35 +104,41 @@ public class WhenReadyTest {
         
         CompletableFuture<Integer> future = null;
         int expectedResult = -1;
-        int expectedReadyCount = -1;
         int expectedActionCount = -1;
+        int expectedReadyCount = -1;
         
         switch (whenReadyMethod) {
         case COMPLETE_ASYNC:
             future = WhenReady.completeAsync(ready, Integer.valueOf(readyAfterCount), simulator, asyncOptions);
             expectedResult = readyAfterCount;
-            expectedReadyCount = readyAfterCount;
             expectedActionCount = 0;
+            expectedReadyCount = readyAfterCount;
             break;
         case APPLY_ASYNC:
             future = WhenReady.applyAsync(ready, action, simulator, asyncOptions);
             expectedResult = 1;
-            expectedReadyCount = readyAfterCount;
             expectedActionCount = 1;
+            expectedReadyCount = readyAfterCount + expectedActionCount;
             break;
         case START_APPLY_LOOP_ASYNC:
             future = WhenReady.startApplyLoopAsync(ready, done, action, simulator, asyncOptions);
             expectedResult = doneAfterCount;
-            expectedReadyCount = readyAfterCount + doneAfterCount -1;
             expectedActionCount = doneAfterCount;
+            expectedReadyCount = readyAfterCount + expectedActionCount + doneAfterCount - 1;
             break;
         }
         
         int result = -1;
         try {
-            result = future.get().intValue();
+            Integer futureResult = future.get();
+            Assert.assertNotEquals(futureResult, null);
+            
+            if (futureResult != null) {
+                result = futureResult.intValue();
+            }
         }
         catch (Throwable ex) {
+            ex.printStackTrace();
             Throwable cause = ex.getCause();
             if (cause != null) {
                 throw cause;

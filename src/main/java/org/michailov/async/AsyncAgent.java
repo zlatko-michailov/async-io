@@ -18,7 +18,7 @@ public abstract class AsyncAgent {
     private static final Function<AsyncAgent, Void> ACTION = agent -> agent.actionWrapper();
     
     private final AsyncOptions _asyncOptions;
-    private AgentMode _mode;
+    private volatile AgentMode _mode;
     
     /**
      * Base constructor for derived classes to call. 

@@ -18,7 +18,7 @@ public class AsyncCharDecoder extends AsyncAgent {
     private final ByteBuffer _mainByteBuffer;
     private final ByteBuffer _tempByteBuffer;
     private final CharBuffer _mainCharBuffer;
-    private boolean _isTempBufferDirty;
+    private volatile boolean _isTempBufferDirty;
     
     public AsyncCharDecoder(ByteRingBuffer byteRingBuffer, CharRingBuffer charRingBuffer, CharsetAsyncOptions charsetAsyncOptions) {
         super(charsetAsyncOptions);
@@ -74,7 +74,7 @@ public class AsyncCharDecoder extends AsyncAgent {
         boolean isReady = false;
         
         try {
-            isReady = !isEOF() && _byteRingBuffer.getAvailableToReadStraight() > 0 && _charRingBuffer.getAvailableToWriteStraight() > 0;
+            isReady = !isEOF() && _byteRingBuffer.getAvailableToRead() > 0 && _charRingBuffer.getAvailableToWrite() > 0;
         }
         catch (Throwable ex) {
             setEOFAndThrow(ex);
@@ -83,15 +83,18 @@ public class AsyncCharDecoder extends AsyncAgent {
         return isReady;
     }
     
-    @Override
     /**
      * "<i>done</i>" predicate that returns true when this async agent wants to quit the current async loop.   
      */
+    @Override
     protected boolean done() {
         boolean isDone = true;
         
         try {
-            isDone = isEOF();
+            isDone = isEOF() || (_byteRingBuffer.isEOF() && _byteRingBuffer.getAvailableToRead() == 0);
+            if (isDone) {
+                setEOF();
+            }
         }
         catch (Throwable ex) {
             setEOFAndThrow(ex);
@@ -106,20 +109,11 @@ public class AsyncCharDecoder extends AsyncAgent {
     @Override
     protected void action() {
         try {
-            while (ready()) {
-                // Do a single attempt per iteration to make sure 
-                // ready() is always checked before each attempt.
-                if (!_isTempBufferDirty) {
-                    decodeFromMainBuffer();
-                }
-                else {
-                    decodeFromTempBuffer();
-                }
+            if (!_isTempBufferDirty) {
+                decodeFromMainBuffer();
             }
-            
-            // Check for EOF.
-            if (_byteRingBuffer.isEOF()) {
-                setEOF();
+            else {
+                decodeFromTempBuffer();
             }
         }
         catch (Throwable ex) {
@@ -139,10 +133,6 @@ public class AsyncCharDecoder extends AsyncAgent {
         _mainByteBuffer.limit(readPosition + readStraight);
         _mainCharBuffer.position(writePosition);
         _mainCharBuffer.limit(writePosition + writeStraight);
-        
-        for (int i = _mainByteBuffer.position(); i < _mainByteBuffer.limit(); i++) {
-            System.out.println(String.format("_mainByteBuffer[%1$d] = %2$d", i, _mainByteBuffer.array()[i]));
-        }
         
         // Attempt to decode.
         _charsetDecoder.reset();
@@ -203,10 +193,6 @@ public class AsyncCharDecoder extends AsyncAgent {
         _tempByteBuffer.limit(oldLimit + 1);
         _tempByteBuffer.put(oldLimit, (byte)b);
         _tempByteBuffer.position(0);
-        
-        for (int i = _tempByteBuffer.position(); i < _tempByteBuffer.limit(); i++) {
-            System.out.println(String.format("_tempByteBuffer[%1$d] = %2$d", i, _tempByteBuffer.array()[i]));
-        }
         
         // Attempt to decode.
         _charsetDecoder.reset();

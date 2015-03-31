@@ -28,12 +28,14 @@ public class AsyncCharDecoderTest {
         state.options.charset = CHARSET;
         state.decoder = new AsyncCharDecoder(state.byteRingBuffer, state.charRingBuffer, state.options);
         
-        Predicate<TestState> ready = st -> st.byteRingBuffer.getAvailableToWrite() > 0;
+        // Start byte feed loop.
+        Predicate<TestState> ready = st -> st.bytesPosition < BYTES.length && st.byteRingBuffer.getAvailableToWrite() > 0;
         Predicate<TestState> done = st -> st.bytesPosition == BYTES.length;
         Function<TestState, Void> action = st -> { st.byteRingBuffer.write(BYTES[st.bytesPosition++]); return null; };
         CompletableFuture<Void> inputFuture = WhenReady.startApplyLoopAsync(ready, done, action, state)
-                                                    .whenCompleteAsync((nl, th) -> state.byteRingBuffer.setEOF());
+                                                    .whenCompleteAsync((nl, ex) -> state.byteRingBuffer.setEOF());
         
+        // Start decoding loop.
         CompletableFuture<Void> outputFuture = state.decoder.startApplyLoopAsync();
         
         try {
@@ -60,5 +62,5 @@ class TestState {
     CharRingBuffer charRingBuffer;
     CharsetAsyncOptions options;
     AsyncCharDecoder decoder;
-    int bytesPosition;
+    volatile int bytesPosition;
 }

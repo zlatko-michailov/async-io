@@ -78,7 +78,7 @@ public class AsyncByteStreamReader extends AsyncAgent {
         boolean isReady = false;
         
         try {
-            isReady = !isEOF() && _inputStream.available() > 0 && _byteRingBuffer.getAvailableToWriteStraight() > 0;
+            isReady = !isEOF() && _inputStream.available() > 0 && _byteRingBuffer.getAvailableToWrite() > 0;
         }
         catch (Throwable ex) {
             setEOFAndThrow(ex);
