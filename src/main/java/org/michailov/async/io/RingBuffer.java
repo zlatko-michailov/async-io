@@ -129,7 +129,7 @@ public abstract class RingBuffer {
      * @return  The count of items available to be written one by one.
      */
     public int getAvailableToWrite() {
-        return (int)(_bufferLength - (_virtualWritePosition - _virtualReadPosition));
+        return isEOF() ? 0 : (int)(_bufferLength - (_virtualWritePosition - _virtualReadPosition));
     }
     
     /**

@@ -73,14 +73,14 @@ public class AsyncByteStreamReaderTest {
     }
 
     private void testReadAsync(boolean isLoop, int streamLength, int chunkLength, int chunkDelayMillis, int buffLength, long timeoutMillis) throws Throwable {
-        TestReadAsyncState state = new TestReadAsyncState();
-        state.asyncOptions = new AsyncOptions();
-        state.asyncOptions.timeout = timeoutMillis;
+        TestState state = new TestState();
+        state.options = new AsyncOptions();
+        state.options.timeout = timeoutMillis;
         state.ringBuffer = new ByteRingBuffer(buffLength);
         state.simulator = new InputStreamSimulator(streamLength, chunkLength, chunkDelayMillis, TimeUnit.MILLISECONDS);
-        state.reader = new AsyncByteStreamReader(state.simulator, state.ringBuffer, state.asyncOptions);
+        state.reader = new AsyncByteStreamReader(state.simulator, state.ringBuffer, state.options);
         state.streamLength = streamLength;
-        state.streamIndex = 0;
+        state.streamPosition = 0;
         state.testFuture = new CompletableFuture<Void>();
         state.isLoop = isLoop;
         
@@ -107,7 +107,7 @@ public class AsyncByteStreamReaderTest {
             }
         }
     }
-    private static void readAndVerifyLoopAsync(TestReadAsyncState state) {
+    private static void readAndVerifyLoopAsync(TestState state) {
         state.operationFuture = state.reader.startApplyLoopAsync();
         state.operationFuture.whenCompleteAsync((result, ex) -> {
             if (ex != null) {
@@ -119,13 +119,13 @@ public class AsyncByteStreamReaderTest {
         });
         
         // Start a verification loop.
-        Predicate<TestReadAsyncState> ready = st -> st.ringBuffer.getAvailableToRead() > 0;
-        Predicate<TestReadAsyncState> done = st -> st.operationFuture.isDone() && st.ringBuffer.getAvailableToRead() == 0;
-        Function<TestReadAsyncState, Void> action = st -> { verifyRingBuffer(st); return null; };
+        Predicate<TestState> ready = st -> st.ringBuffer.getAvailableToRead() > 0;
+        Predicate<TestState> done = st -> st.operationFuture.isDone() && st.ringBuffer.getAvailableToRead() == 0;
+        Function<TestState, Void> action = st -> { verifyRingBuffer(st); return null; };
         WhenReady.startApplyLoopAsync(ready, done, action, state);
     }
     
-    private static void readAndVerifyAsync(TestReadAsyncState state) {
+    private static void readAndVerifyAsync(TestState state) {
         state.operationFuture = state.reader.applyAsync();
         state.operationFuture.whenCompleteAsync((result, ex) -> {
             if (ex != null) {
@@ -142,19 +142,19 @@ public class AsyncByteStreamReaderTest {
         });
     }
     
-    private static boolean verifyRingBuffer(TestReadAsyncState state) {
+    private static boolean verifyRingBuffer(TestState state) {
         // Read and verify any available content from the ring buffer.
         while (state.ringBuffer.getAvailableToRead() > 0) {
-            int expectedByte = InputStreamSimulator.CONTENT_BYTES[state.streamIndex % InputStreamSimulator.CONTENT_BYTES_LENGTH];
+            int expectedByte = InputStreamSimulator.CONTENT_BYTES[state.streamPosition % InputStreamSimulator.CONTENT_BYTES_LENGTH];
             int actualByte = state.ringBuffer.read();
             
-            System.out.println(String.format("Byte[%1$d]: %2$d = %3$d", state.streamIndex, expectedByte, actualByte));
+            System.out.println(String.format("Byte[%1$d]: %2$d = %3$d", state.streamPosition, expectedByte, actualByte));
             if (expectedByte != actualByte) {
                 state.testFuture.completeExceptionally(new Exception("Wrong byte!"));
                 return true;
             }
             
-            state.streamIndex++;
+            state.streamPosition++;
         }
 
         // Check the operation for failure.
@@ -169,8 +169,8 @@ public class AsyncByteStreamReaderTest {
         // Check the operation for completion.
         else if ((state.isLoop && state.operationFuture.isDone()) || state.reader.isEOF()) {
             // Verify the stream length.
-            System.out.println(String.format("Stream length: %1$d = %2$d", state.streamIndex, state.streamLength));
-            if (state.streamIndex != state.streamLength) {
+            System.out.println(String.format("Stream length: %1$d = %2$d", state.streamPosition, state.streamLength));
+            if (state.streamPosition != state.streamLength) {
                 state.testFuture.completeExceptionally(new Exception("Wrong stream length!"));
                 return true;
             }
@@ -183,13 +183,13 @@ public class AsyncByteStreamReaderTest {
         return false;
     }
     
-    private class TestReadAsyncState {
-        AsyncOptions asyncOptions;
+    private class TestState {
+        AsyncOptions options;
         ByteRingBuffer ringBuffer;
         InputStreamSimulator simulator;
         AsyncByteStreamReader reader;
         int streamLength;
-        int streamIndex;
+        int streamPosition;
         CompletableFuture<Void> testFuture;
         CompletableFuture<Void> operationFuture;
         boolean isLoop;

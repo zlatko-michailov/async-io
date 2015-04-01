@@ -150,7 +150,7 @@ public class AsyncCharDecoder extends AsyncAgent {
         if (writeDelta > 0) {
             _charRingBuffer.advanceWritePosition(writeDelta);
         }
-            
+        
         // If input was malformed AND this is the physical end of the main buffer,
         // decoding must transition to the temp buffer.
         if (coderResult.isMalformed() && (_mainByteBuffer.limit() == _mainByteBuffer.capacity())) {
@@ -173,6 +173,10 @@ public class AsyncCharDecoder extends AsyncAgent {
 
             // Transition to temp buffer.
             _isTempBufferDirty = true;
+        }
+        // If it is hopeless to make progress due to a stale remainder, complete. 
+        else if (readDelta == 0 && _byteRingBuffer.isEOF() && _byteRingBuffer.getAvailableToReadStraight() == readStraight) {
+            setEOF();
         }
     }
     
