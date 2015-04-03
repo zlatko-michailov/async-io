@@ -2,14 +2,22 @@ package org.michailov.async.io;
 
 import java.nio.*;
 import java.nio.charset.*;
-
 import org.michailov.async.*;
 
+/**
+ * Asynchronous decoder of bytes into chars.
+ * 
+ * @see     WhenReady
+ * @see     AsyncAgent
+ * @see     ByteRingBuffer
+ * @see     CharRingBuffer
+ * 
+ * @author  Zlatko Michailov
+ */
 public class AsyncCharDecoder extends AsyncAgent {
 
     private static final int MAX_CHAR_BYTES = 8; 
     private static final boolean DECODE_AS_EOF = true;
-    
     
     private final ByteRingBuffer _byteRingBuffer;
     private final CharRingBuffer _charRingBuffer;
@@ -20,6 +28,13 @@ public class AsyncCharDecoder extends AsyncAgent {
     private final CharBuffer _mainCharBuffer;
     private volatile boolean _isTempBufferDirty;
     
+    /**
+     * COnstructs an AsyncCharDecoder instance over the given ring buffers.
+     * 
+     * @param byteRingBuffer        {@see ByteRingBuffer} to read bytes from.
+     * @param charRingBuffer        {@see CharRingBuffer} to writes char to.
+     * @param charsetAsyncOptions   {@see CharsetAsyncOptions} to use for all async operations.
+     */
     public AsyncCharDecoder(ByteRingBuffer byteRingBuffer, CharRingBuffer charRingBuffer, CharsetAsyncOptions charsetAsyncOptions) {
         super(charsetAsyncOptions);
         
