@@ -17,6 +17,7 @@ public class CharsetAsyncOptions extends AsyncOptions {
     
     /**
      * Charset for the encoded/decoded bytes.
+     * The default is ASCII.
      */
     public Charset charset = StandardCharsets.US_ASCII;
 }

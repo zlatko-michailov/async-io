@@ -29,11 +29,11 @@ public class AsyncCharDecoder extends AsyncAgent {
     private volatile boolean _isTempBufferDirty;
     
     /**
-     * COnstructs an AsyncCharDecoder instance over the given ring buffers.
+     * Constructs an AsyncCharDecoder instance over the given ring buffers.
      * 
-     * @param byteRingBuffer        {@see ByteRingBuffer} to read bytes from.
-     * @param charRingBuffer        {@see CharRingBuffer} to writes char to.
-     * @param charsetAsyncOptions   {@see CharsetAsyncOptions} to use for all async operations.
+     * @param byteRingBuffer        {@link ByteRingBuffer} to read bytes from.
+     * @param charRingBuffer        {@link CharRingBuffer} to write char to.
+     * @param charsetAsyncOptions   {@link CharsetAsyncOptions} to use for all async operations.
      */
     public AsyncCharDecoder(ByteRingBuffer byteRingBuffer, CharRingBuffer charRingBuffer, CharsetAsyncOptions charsetAsyncOptions) {
         super(charsetAsyncOptions);
@@ -65,7 +65,7 @@ public class AsyncCharDecoder extends AsyncAgent {
     /**
      * Returns the attached char ring buffer where bytes will be written.
      * 
-     * @return  The attached char ring buffer from where bytes will be written.
+     * @return  The attached char ring buffer where bytes will be written.
      */
     public CharRingBuffer getCharRingBuffer() {
         return _charRingBuffer;

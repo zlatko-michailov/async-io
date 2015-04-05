@@ -3,7 +3,8 @@ package org.michailov.async;
 import java.util.function.*;
 
 final class WhenReadyArguments<S, R> {
-    
+
+    final WhenReadytMode mode;
     final Predicate<S> ready;
     final Predicate<S> readyOrDone;
     final Predicate<S> done;
@@ -16,14 +17,14 @@ final class WhenReadyArguments<S, R> {
     int readyTestCount;
     
     WhenReadyArguments(Predicate<S> ready, R result, S state, AsyncOptions asyncOptions) {
-        this(ready, null, null, result, state, asyncOptions);
+        this(WhenReadytMode.ONCE, ready, null, null, result, state, asyncOptions);
     }
     
-    WhenReadyArguments(Predicate<S> ready, Predicate<S> done, Function<S, R> action, S state, AsyncOptions asyncOptions) {
-        this(ready, done, action, null, state, asyncOptions);
+    WhenReadyArguments(WhenReadytMode mode, Predicate<S> ready, Predicate<S> done, Function<S, R> action, S state, AsyncOptions asyncOptions) {
+        this(mode, ready, done, action, null, state, asyncOptions);
     }
     
-    private WhenReadyArguments(Predicate<S> ready, Predicate<S> done, Function<S, R> action, R result, S state, AsyncOptions asyncOptions) {
+    private WhenReadyArguments(WhenReadytMode mode, Predicate<S> ready, Predicate<S> done, Function<S, R> action, R result, S state, AsyncOptions asyncOptions) {
         Predicate<S> readyOrDone;
        
         if (done != null && done != ready) {
@@ -33,7 +34,8 @@ final class WhenReadyArguments<S, R> {
             readyOrDone = ready;
             done = s -> true;
         }
-        
+
+        this.mode = mode;
         this.ready = ready;
         this.readyOrDone = readyOrDone;
         this.done = done;
@@ -47,3 +49,9 @@ final class WhenReadyArguments<S, R> {
     }
 }
 
+
+enum WhenReadytMode {
+    IDLE,
+    ONCE,
+    LOOP
+}

@@ -124,7 +124,7 @@ public class WhenReadyTest {
             future = WhenReady.startApplyLoopAsync(ready, done, action, simulator, asyncOptions);
             expectedResult = doneAfterCount;
             expectedActionCount = doneAfterCount;
-            expectedReadyCount = readyAfterCount + expectedActionCount + doneAfterCount - 1;
+            expectedReadyCount = readyAfterCount + expectedActionCount + 1;
             break;
         }
         
