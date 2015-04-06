@@ -3,16 +3,61 @@ package org.michailov.async.io.test;
 import java.io.*;
 import java.nio.charset.*;
 import java.util.concurrent.*;
+import org.michailov.async.io.*;
 
 class InputStreamSimulator extends InputStream {
     
-    static final String CONTENT = "Добре дошли Welcome в to очарователния the exciting свят world " +
-                                  "на of асинхронното asynchronous програмиране programming!";
+    static final String[] LINES = {
+        "",
+        "",
+        "",
+        "Добре дошли",
+        "Welcome",
+        "",
+        "в",
+        "to",
+        "очарователния",
+        "the exciting",
+        "",
+        "",
+        "свят",
+        "world",
+        "на",
+        "of",
+        "асинхронното",
+        "asynchronous",
+        "",
+        "програмиране",
+        "programming",
+        "!",
+        "",
+        "",
+    };
+    static final String[] LINE_BREAKS = {
+        LineAsyncOptions.CRLF,
+        LineAsyncOptions.LF, // Keep LF in front of CR to avoid missing some empty lines!
+        LineAsyncOptions.CR,
+    };
     static final Charset CHARSET = StandardCharsets.UTF_8;
-    static final byte[] CONTENT_BYTES = CONTENT.getBytes(CHARSET);
-    static final int CONTENT_BYTES_LENGTH = CONTENT_BYTES.length;
+    static final String CONTENT;
+    static final byte[] CONTENT_BYTES;
+    static final int CONTENT_BYTES_LENGTH;
     
     private static final int EOF = -1;
+    
+    static {
+        StringBuilder content = new StringBuilder(500);
+        int lineBreaksLength = LINE_BREAKS.length;
+        
+        for (int i = 0; i < LINES.length; i++) {
+            content.append(LINES[i]);
+            content.append(LINE_BREAKS[i % lineBreaksLength]);
+        }
+        
+        CONTENT = content.toString();
+        CONTENT_BYTES = CONTENT.getBytes(CHARSET);
+        CONTENT_BYTES_LENGTH = CONTENT_BYTES.length;
+    }
     
     private final int _streamLength;
     private final int _chunkLength;
