@@ -28,8 +28,8 @@ import java.util.function.*;
 public final class WhenReady {
     
     private static final String TIMEOUT_MESSAGE = "Operation timed out.";
-    private static final ForkJoinPool THREAD_POOL = ForkJoinPool.commonPool();
-    private static final int READY_TEST_THRESHOLD = 16;
+    private static final int THROTTLE_THRESHOLD = 16;
+    private static final int MAX_DELAY_MILLIS = 500;
 
     /**
      * This class offers only static methods. 
@@ -183,13 +183,14 @@ public final class WhenReady {
                     completeFutureSafe(future, args.result);
                 }
                 else {
-                    // Throttle re-scheduling.
-                    if (++args.readyTestCount % READY_TEST_THRESHOLD == 0) {
-                        long sleepMillis = args.readyTestCount;
-                        Thread.sleep(sleepMillis);
+                    // Throttle re-scheduling if the threshold has been exceeded.
+                    if (++args.readyTestCount % THROTTLE_THRESHOLD == 0) {
+                        long delayMillis = Math.min(args.readyTestCount, MAX_DELAY_MILLIS);
+                        Executor.executeAfter(() -> completeAsync(future, args), delayMillis);
                     }
-                    
-                    THREAD_POOL.execute(() -> completeAsync(future, args));
+                    else {
+                        Executor.execute(() -> completeAsync(future, args));
+                    }
                 }
             }
         }
@@ -229,7 +230,7 @@ public final class WhenReady {
                 }
                 
                 if (!mustExit(future, args)) {
-                    THREAD_POOL.execute(() -> startApplyLoopAsync(future, args));
+                    Executor.execute(() -> startApplyLoopAsync(future, args));
                 }
             }
         }
