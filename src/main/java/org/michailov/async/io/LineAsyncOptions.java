@@ -1,9 +1,7 @@
 package org.michailov.async.io;
 
-import org.michailov.async.*;
-
 /**
- * Options that control the execution of async line ending.
+ * Options that control the execution of async line splitting and ending.
  *  
  * @author Zlatko Michailov
  */
@@ -30,13 +28,12 @@ public class LineAsyncOptions extends CharsetAsyncOptions {
     public static final String SYSTEM = System.getProperty("line.separator");
     
     /**
-     * Default estimated line length in chars - 512 chars.
+     * Default estimated line length in chars - {@value #DEFAULT_ESTIMATED_LINE_LENGTH} chars.
      */
-    public static final int DEFAULT_ESTIMATED_LINE_LENGTH = 512;
+    public static final int DEFAULT_ESTIMATED_LINE_LENGTH = 1024;
 
     /**
      * Sequence of chars that gets appended to each line. 
-     * This field is only used on the output.
      * The default is {@link #SYSTEM}.
      */
     public String lineBreak = SYSTEM;
