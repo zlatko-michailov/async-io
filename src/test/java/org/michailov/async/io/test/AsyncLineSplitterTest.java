@@ -1,9 +1,7 @@
 package org.michailov.async.io.test;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.concurrent.*;
+import java.util.function.*;
 import org.junit.*;
 import org.michailov.async.*;
 import org.michailov.async.io.*;
