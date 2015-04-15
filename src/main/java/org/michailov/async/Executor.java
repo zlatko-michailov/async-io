@@ -28,6 +28,8 @@ class Executor {
     private static final ForkJoinPool MAIN_THREAD_POOL = ForkJoinPool.commonPool();
     private static final int DELAY_THREAD_COUNT = 1;
     private static final ScheduledThreadPoolExecutor DELAY_THREAD_POOL = new ScheduledThreadPoolExecutor(DELAY_THREAD_COUNT);
+    private static final int THROTTLE_THRESHOLD = 8;
+    private static final int MAX_DELAY_MILLIS = 200;
     
     /**
      * Schedules an operation for an immediate execution on the main thread pool.
@@ -47,5 +49,22 @@ class Executor {
     static void executeAfter(Runnable runnable, long delayMillis) {
         DELAY_THREAD_POOL.schedule(() -> execute(runnable), delayMillis, TimeUnit.MILLISECONDS);
     }
-
+    
+    /**
+     * Schedules an operation for delayed or immediate execution on the main thread pool
+     * based on the retry count.
+     * 
+     * @param   runnable    The operation to be executed.
+     * @param   retryCount  Count of "dummy" retries. 
+     */
+    static void throttleExecute(Runnable runnable, int retryCount) {
+        if (retryCount % THROTTLE_THRESHOLD == 0) {
+            long delayMillis = Math.min(retryCount, MAX_DELAY_MILLIS);
+            executeAfter(runnable, delayMillis);
+        }
+        else {
+            execute(runnable);
+        }
+    }
+    
 }

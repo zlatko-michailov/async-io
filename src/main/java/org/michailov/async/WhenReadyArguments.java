@@ -30,7 +30,7 @@ final class WhenReadyArguments<S, R> {
     final AsyncOptions asyncOptions;
     final long startTimeMillis;
     final long timeoutMillis;
-    int readyTestCount;
+    int readyRetryCount;
     
     WhenReadyArguments(Predicate<S> ready, R result, S state, AsyncOptions asyncOptions) {
         this(WhenReadytMode.ONCE, ready, null, null, result, state, asyncOptions);
@@ -61,7 +61,7 @@ final class WhenReadyArguments<S, R> {
         this.asyncOptions = asyncOptions;
         this.startTimeMillis = System.currentTimeMillis();
         this.timeoutMillis = asyncOptions.timeout >= 0 ? asyncOptions.timeUnit.toMillis(asyncOptions.timeout) : AsyncOptions.TIMEOUT_INFINITE;
-        this.readyTestCount = 0;
+        this.readyRetryCount = 0;
     }
 }
 

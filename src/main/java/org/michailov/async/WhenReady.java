@@ -44,8 +44,6 @@ import java.util.function.*;
 public final class WhenReady {
     
     private static final String TIMEOUT_MESSAGE = "Operation timed out.";
-    private static final int THROTTLE_THRESHOLD = 16;
-    private static final int MAX_DELAY_MILLIS = 500;
 
     /**
      * This class offers only static methods. 
@@ -195,18 +193,11 @@ public final class WhenReady {
         try {
             if (!mustExit(future, args)) {
                 if (args.readyOrDone.test(args.state)) {
-                    args.readyTestCount = 0;
+                    args.readyRetryCount = 0;
                     completeFutureSafe(future, args.result);
                 }
                 else {
-                    // Throttle re-scheduling if the threshold has been exceeded.
-                    if (++args.readyTestCount % THROTTLE_THRESHOLD == 0) {
-                        long delayMillis = Math.min(args.readyTestCount, MAX_DELAY_MILLIS);
-                        Executor.executeAfter(() -> completeAsync(future, args), delayMillis);
-                    }
-                    else {
-                        Executor.execute(() -> completeAsync(future, args));
-                    }
+                    Executor.throttleExecute(() -> completeAsync(future, args), ++args.readyRetryCount);
                 }
             }
         }
