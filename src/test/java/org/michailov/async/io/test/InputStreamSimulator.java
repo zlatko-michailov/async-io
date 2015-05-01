@@ -75,23 +75,17 @@ class InputStreamSimulator extends InputStream {
         CONTENT_BYTES_LENGTH = CONTENT_BYTES.length;
     }
     
+    private final DelaySimulator _delaySimulator;
     private final int _streamLength;
-    private final int _chunkLength;
-    private final int _delayMillis;
     private int _nextStreamIndex;
     private int _nextContentIndex;
-    private int _nextChunkIndex;
-    private long _lastReadTimeMillis;
     private boolean _isEOF;
 
     InputStreamSimulator(int streamLength, int chunkLength, int delay, TimeUnit unit) {
+        _delaySimulator = new DelaySimulator(chunkLength, (int)unit.toMillis(delay));
         _streamLength = streamLength;
-        _chunkLength = chunkLength;
-        _delayMillis = (int)unit.toMillis(delay);
         _nextStreamIndex = 0;
         _nextContentIndex = 0;
-        _nextChunkIndex = 0;
-        _lastReadTimeMillis = 0;
         _isEOF = false;
     }
 
@@ -110,18 +104,12 @@ class InputStreamSimulator extends InputStream {
         }
         
         // If chunking is not enabled, the rest of the entire stream is available.
-        if (_chunkLength <= 0) {
+        if (!_delaySimulator.isChunkingEnabled()) {
             return _streamLength - _nextStreamIndex;
         }
         
-        // If we are supposed to block now, then nothing is available.
-        long blockingMillis = getBlockingMillis();
-        if (blockingMillis > 0) {
-            return 0;
-        }
-        
-        // The rest of the chunk is available.
-        return _chunkLength - _nextChunkIndex;
+        // Ask the delay simulator what is available.
+        return _delaySimulator.getAvailable();
     }
     
     @Override
@@ -171,63 +159,20 @@ class InputStreamSimulator extends InputStream {
             return EOF;
         }
         
-        // If chunking is enabled and we are at a chunk boundary (except at the beginning of the stream), we may have to block.
-        if (_chunkLength > 0 && _nextChunkIndex == 0 && _nextStreamIndex > 0) {
-            long blockingMillis = getBlockingMillis();
-            if (blockingMillis > 0) {
-                try {
-                    Thread.sleep(blockingMillis);
-                }
-                catch (InterruptedException ex) {
-                }
-            }
-        }
-        
         // Cache the content byte we are supposed to return.
         byte r = CONTENT_BYTES[_nextContentIndex];
+
+        // BLock if needed.
+        _delaySimulator.advance();
         
-        // Move indexes.
+        // Advance indexes.
+        ++_nextStreamIndex;
         if (++_nextContentIndex == CONTENT_BYTES_LENGTH) {
             _nextContentIndex = 0;
         }
-        if (++_nextChunkIndex == _chunkLength) {
-            _nextChunkIndex = 0;
-        }
-        ++_nextStreamIndex;
-        _lastReadTimeMillis = System.currentTimeMillis();
 
         // Return the cached byte.
         return r;
-    }
-
-    private long getBlockingMillis() {
-        // If chunking is not enabled, we'll never block.
-        if (_chunkLength <= 0) {
-            return 0;
-        }
-        
-        // If we are not at a chunk boundary, we won't block now.
-        if (_nextChunkIndex != 0) {
-            return 0;
-        }
-        
-        // If we are at the beginning of the stream, we won't block now.
-        if (_nextStreamIndex == 0) {
-            return 0;
-        }
-        
-        // We are at chunk boundary.
-        // The blocking time is the time left from the last read up to a chunk delay.
-        long currentTimeMillis = System.currentTimeMillis();
-        long millisSinceLastRead = currentTimeMillis - _lastReadTimeMillis;
-        
-        // If more time than the desired delay has already passed, we won't block.
-        if (millisSinceLastRead >= _delayMillis) {
-            return 0;
-        }
-        
-        // We'll block for the remainder.
-        return _delayMillis - millisSinceLastRead;
     }
     
 }
