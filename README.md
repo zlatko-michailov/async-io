@@ -20,7 +20,7 @@ the action in a loop until the *done* predicate returns true.
 
 
 # Support
-You are strongly encouraged to visit (http://zlatko.michailov.org/search/label/Async%20I%2FO)
+You are strongly encouraged to visit (http://zlatko.michailov.org/search/label/Java%20Async%20I%2FO)
 where you'll find articles dedicated to the primitives from this package. 
 
 

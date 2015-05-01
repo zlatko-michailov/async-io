@@ -166,8 +166,19 @@ public final class WhenReady {
         Util.ensureArgumentNotNull("action", action);
         Util.ensureArgumentNotNull("asyncOptions", asyncOptions);
         
+        // Create the future that will be returned to the caller.
         CompletableFuture<R> future = new CompletableFuture<R>();
         WhenReadyArguments<S, R> args = new WhenReadyArguments<S, R>(mode, ready, done, action, state, asyncOptions);
+        
+        // Schedule a timeout completion in case the operation starts executing on time, but takes too long. 
+        if (args.timeoutMillis > 0) {
+            Executor.executeAfter(() -> {
+                    if (!future.isDone()) {
+                        future.completeExceptionally(new TimeoutException(TIMEOUT_MESSAGE));
+                    }
+                }, args.timeoutMillis);
+        }
+        
         return startApplyLoopAsync(future, args);
     }
     
