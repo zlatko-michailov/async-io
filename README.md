@@ -1,6 +1,6 @@
 # Summary
 ## Async I/O
-The main purpose of this project is to enable async interaction with the existing, sync, InputStream and OutputStream primitives.
+The main purpose of this project is to enable async interaction with the existing, sync, InputStream and OutputStream primitives in Java.
 
 All I/O operations are performed on the ForkJoinPool thread pool. 
 A CompletableFuture is returned from each async operation, so that it can be continued from.
@@ -20,8 +20,7 @@ the action in a loop until the *done* predicate returns true.
 
 
 # Support
-You are strongly encouraged to visit (http://zlatko.michailov.org/search/label/Java%20Async%20I%2FO)
-where you'll find articles dedicated to the primitives from this package. 
+Visit (http://zlatko.michailov.org/search/label/Java%20Async%20I%2FO) where you'll find articles dedicated to this package. 
 
 
 # Build Sources
