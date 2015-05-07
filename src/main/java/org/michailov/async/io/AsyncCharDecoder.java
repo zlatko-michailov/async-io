@@ -48,7 +48,7 @@ public class AsyncCharDecoder extends AsyncAgent {
      * Constructs an AsyncCharDecoder instance over the given ring buffers.
      * 
      * @param byteRingBuffer        {@link ByteRingBuffer} to read bytes from.
-     * @param charRingBuffer        {@link CharRingBuffer} to write char to.
+     * @param charRingBuffer        {@link CharRingBuffer} to write chars to.
      * @param charsetAsyncOptions   {@link CharsetAsyncOptions} to use for all async operations.
      */
     public AsyncCharDecoder(ByteRingBuffer byteRingBuffer, CharRingBuffer charRingBuffer, CharsetAsyncOptions charsetAsyncOptions) {
@@ -79,9 +79,9 @@ public class AsyncCharDecoder extends AsyncAgent {
     }
     
     /**
-     * Returns the attached char ring buffer where bytes will be written.
+     * Returns the attached char ring buffer where chars will be written.
      * 
-     * @return  The attached char ring buffer where bytes will be written.
+     * @return  The attached char ring buffer where chars will be written.
      */
     public CharRingBuffer getCharRingBuffer() {
         return _charRingBuffer;
@@ -93,6 +93,7 @@ public class AsyncCharDecoder extends AsyncAgent {
      * @return  true iff EOF has been reached or an exception has been encountered.
      */
     public boolean isEOF() {
+        // We record the EOF on the output ring buffer.
         return _charRingBuffer.isEOF();
     }
 
@@ -152,6 +153,9 @@ public class AsyncCharDecoder extends AsyncAgent {
         }
     }
     
+    /**
+     * Attempts to decode bytes from the main buffer.
+     */
     private void decodeFromMainBuffer() {
         // Take a snapshot of the real buffers.
         int readPosition = _byteRingBuffer.getReadPosition();
@@ -211,6 +215,10 @@ public class AsyncCharDecoder extends AsyncAgent {
         }
     }
     
+    /**
+     * Copies the remainder of bytes to the temp buffer and adds 1 more byte.
+     * Then attempts to decode those bytes from the temp buffer.
+     */
     private void decodeFromTempBuffer() {
         // Take a snapshot of the real char buffer.
         // (The real byte buffer is not needed now.)

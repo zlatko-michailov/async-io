@@ -27,7 +27,7 @@ public class AsyncCharDecoderTest {
 
     @Test
     public void testArray() {
-        final Charset CHARSET = StandardCharsets.UTF_16;
+        final Charset CHARSET = StandardCharsets.UTF_16LE;
         final String CONTENT = "БаДаГе";
         final byte[] BYTES = CONTENT.getBytes(CHARSET);
         final int BYTE_RING_BUFFER_CAPACITY = 3;
