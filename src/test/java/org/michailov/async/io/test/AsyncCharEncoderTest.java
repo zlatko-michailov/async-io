@@ -19,11 +19,9 @@ package org.michailov.async.io.test;
 import java.nio.charset.*;
 import java.util.concurrent.*;
 import java.util.function.*;
-
 import org.junit.*;
 import org.michailov.async.*;
 import org.michailov.async.io.*;
-import org.michailov.async.io.test.AsyncCharDecoderTest.TestState;
 
 public class AsyncCharEncoderTest {
 

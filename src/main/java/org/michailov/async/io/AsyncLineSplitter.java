@@ -41,9 +41,9 @@ public class AsyncLineSplitter extends AsyncAgent {
     private int _lastChar;
 
     /**
-     * Constructs an AsyncLIneSpliter instance over the given ring buffers.
+     * Constructs an AsyncLineSpliter instance over the given ring buffers.
      * 
-     * @param charRingBuffer        {@link CharRingBuffer} to read char from.
+     * @param charRingBuffer        {@link CharRingBuffer} to read chars from.
      * @param stringRingBuffer      {@link StringRingBuffer} to write lines to.
      * @param lineAsyncOptions      {@link LineAsyncOptions} to use for all async operations.
      */
@@ -61,9 +61,9 @@ public class AsyncLineSplitter extends AsyncAgent {
     }
 
     /**
-     * Returns the attached char ring buffer from where chars will be read.
+     * Returns the attached char ring buffer from where chars will be read from.
      * 
-     * @return  The attached char ring buffer from where chars will be read.
+     * @return  The attached char ring buffer from where chars will be read from.
      */
     public CharRingBuffer getCharRingBuffer() {
         return _charRingBuffer;
