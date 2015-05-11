@@ -56,6 +56,12 @@ public class AsyncTextStreamReader  extends AsyncAgent {
     private boolean _areLoopsStarted;
     private StringBuilder _contentBuilder;
 
+    /**
+     * Constructs a new AsyncTextStreamReader instance to read from the given InputStream.
+     * 
+     * @param   inputStream                 An InputStream to read from.
+     * @param   textStreamAsyncOptions      {@link TextStreamAsyncOptions} that will control all async operations on this instance. 
+     */
     public AsyncTextStreamReader(InputStream inputStream, TextStreamAsyncOptions textStreamAsyncOptions) {
         this(inputStream, null, null, null, textStreamAsyncOptions);
     }

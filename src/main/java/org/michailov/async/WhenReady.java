@@ -117,7 +117,7 @@ public final class WhenReady {
      * @return              A future that will get completed with the result returned from <i>action</i> when the <i>ready</i> predicate returns true.
      */
     public static <S, R> CompletableFuture<R> applyAsync(Predicate<S> ready, Function<S, R> action, S state, AsyncOptions asyncOptions) {
-        return startApplyLoopAsync(WhenReadytMode.ONCE, ready, ready, action, state, asyncOptions);
+        return startApplyLoopAsync(WhenReadyMode.ONCE, ready, ready, action, state, asyncOptions);
     }
     
     /**
@@ -154,13 +154,13 @@ public final class WhenReady {
      * @return              A future that will get completed with the result returned from the last execution of <i>action</i>.
      */
     public static <S, R> CompletableFuture<R> startApplyLoopAsync(Predicate<S> ready, Predicate<S> done, Function<S, R> action, S state, AsyncOptions asyncOptions) {
-        return startApplyLoopAsync(WhenReadytMode.LOOP, ready, done, action, state, asyncOptions);
+        return startApplyLoopAsync(WhenReadyMode.LOOP, ready, done, action, state, asyncOptions);
     }
 
     /**
      * Private entry point for all {@link #applyAsync} and {@link #startApplyLoop} overloads.
      */
-    private static <S, R> CompletableFuture<R> startApplyLoopAsync(WhenReadytMode mode, Predicate<S> ready, Predicate<S> done, Function<S, R> action, S state, AsyncOptions asyncOptions) {
+    private static <S, R> CompletableFuture<R> startApplyLoopAsync(WhenReadyMode mode, Predicate<S> ready, Predicate<S> done, Function<S, R> action, S state, AsyncOptions asyncOptions) {
         Util.ensureArgumentNotNull("ready", ready);
         Util.ensureArgumentNotNull("done", done);
         Util.ensureArgumentNotNull("action", action);
@@ -231,7 +231,7 @@ public final class WhenReady {
             if (!mustExit(future, args)) {
                 R result = null;
        
-                if (args.mode == WhenReadytMode.ONCE) {
+                if (args.mode == WhenReadyMode.ONCE) {
                     if (args.ready.test(args.state)) {
                         result = args.action.apply(args.state);
                     }

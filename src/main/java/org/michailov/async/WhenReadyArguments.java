@@ -20,7 +20,7 @@ import java.util.function.*;
 
 final class WhenReadyArguments<S, R> {
 
-    final WhenReadytMode mode;
+    final WhenReadyMode mode;
     final Predicate<S> ready;
     final Predicate<S> readyOrDone;
     final Predicate<S> done;
@@ -33,14 +33,14 @@ final class WhenReadyArguments<S, R> {
     int readyRetryCount;
     
     WhenReadyArguments(Predicate<S> ready, R result, S state, AsyncOptions asyncOptions) {
-        this(WhenReadytMode.ONCE, ready, null, null, result, state, asyncOptions);
+        this(WhenReadyMode.ONCE, ready, null, null, result, state, asyncOptions);
     }
     
-    WhenReadyArguments(WhenReadytMode mode, Predicate<S> ready, Predicate<S> done, Function<S, R> action, S state, AsyncOptions asyncOptions) {
+    WhenReadyArguments(WhenReadyMode mode, Predicate<S> ready, Predicate<S> done, Function<S, R> action, S state, AsyncOptions asyncOptions) {
         this(mode, ready, done, action, null, state, asyncOptions);
     }
     
-    private WhenReadyArguments(WhenReadytMode mode, Predicate<S> ready, Predicate<S> done, Function<S, R> action, R result, S state, AsyncOptions asyncOptions) {
+    private WhenReadyArguments(WhenReadyMode mode, Predicate<S> ready, Predicate<S> done, Function<S, R> action, R result, S state, AsyncOptions asyncOptions) {
         Predicate<S> readyOrDone;
        
         if (done != null && done != ready) {
@@ -66,7 +66,7 @@ final class WhenReadyArguments<S, R> {
 }
 
 
-enum WhenReadytMode {
+enum WhenReadyMode {
     IDLE,
     ONCE,
     LOOP

@@ -34,7 +34,7 @@ public abstract class AsyncAgent {
     private static final Function<AsyncAgent, Void> ACTION = agent -> agent.actionWrapper();
     
     private final AsyncOptions _asyncOptions;
-    private volatile WhenReadytMode _mode;
+    private volatile WhenReadyMode _mode;
     
     /**
      * Base constructor for derived classes to call. 
@@ -45,7 +45,7 @@ public abstract class AsyncAgent {
         Util.ensureArgumentNotNull("asyncOptions", asyncOptions);
         
         this._asyncOptions = asyncOptions;
-        this._mode = WhenReadytMode.IDLE;
+        this._mode = WhenReadyMode.IDLE;
     }
     
     /**
@@ -54,7 +54,7 @@ public abstract class AsyncAgent {
      * @return      A future that will get completed with the result returned from {@link #action} when the {@link #ready} predicate returns true.
      */
     public CompletableFuture<Void> applyAsync() {
-        ensureMode(WhenReadytMode.ONCE);
+        ensureMode(WhenReadyMode.ONCE);
         return WhenReady.applyAsync(READY, ACTION, this, _asyncOptions);
     }
     
@@ -64,7 +64,7 @@ public abstract class AsyncAgent {
      * @return      A future that will get completed with the result returned from the last execution of {@link #action}.
      */
     public CompletableFuture<Void> startApplyLoopAsync() {
-        ensureMode(WhenReadytMode.LOOP);
+        ensureMode(WhenReadyMode.LOOP);
         return WhenReady.startApplyLoopAsync(READY, DONE, ACTION, this, _asyncOptions);
     }
     
@@ -98,7 +98,7 @@ public abstract class AsyncAgent {
         action();
         
         // If this was a one-time operation, become idle.
-        if (_mode == WhenReadytMode.ONCE) {
+        if (_mode == WhenReadyMode.ONCE) {
             setIdle();
         }
         
@@ -106,10 +106,19 @@ public abstract class AsyncAgent {
     }
     
     /**
+     * Checks whether this AsyncAgent is idle, i.e. whether it can accept requests for async operations.
+     * 
+     * @return      true iff this AsyncAgent is idle. 
+     */
+    public boolean isIdle() {
+        return _mode == WhenReadyMode.IDLE;
+    }
+    
+    /**
      * Marks this agent as 'idle'.
      */
     protected void setIdle() {
-        _mode = WhenReadytMode.IDLE;
+        _mode = WhenReadyMode.IDLE;
     }
 
     /**
@@ -128,9 +137,9 @@ public abstract class AsyncAgent {
      * 
      * @param   mode    The mode of the operation.
      */
-    private void ensureMode(WhenReadytMode mode) {
+    private void ensureMode(WhenReadyMode mode) {
         // The agent must be in idle mode.
-        if (_mode != WhenReadytMode.IDLE) {
+        if (_mode != WhenReadyMode.IDLE) {
             throw new IllegalStateException("There is already an operation in progress. Await for the returned CompletableFuture to complete, and then retry.");
         }
         
