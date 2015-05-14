@@ -17,7 +17,6 @@
 package org.michailov.async.io;
 
 import java.io.*;
-import java.util.concurrent.*;
 import org.michailov.async.*;
 
 /**
@@ -28,10 +27,8 @@ import org.michailov.async.*;
  * decodes the chars, splits lines, and places complete lines in a {@link StringRingBuffer}
  * that is accessible through {@link #getStringRingBuffer}.
  * <p>
- * To read the entire content of the stream as a single string, use {@link #readToEndAsync}.
- * <p>
- * Otherwise, use {@link AsyncAgent#applyAsync} or {@link AsyncAgent#startApplyLoopAsync} to
- * read lines one-by-one through {@link #getStringRingBuffer}.
+ * Use {@link AsyncAgent#applyAsync} or {@link AsyncAgent#startApplyLoopAsync} to
+ * read lines through {@link #getStringRingBuffer}.
  * <p>
  * This class is a convenience wrapper around the individual elements of the input stack. 
  * <p>
@@ -47,14 +44,12 @@ import org.michailov.async.*;
  */
 public class AsyncTextStreamReader  extends AsyncAgent {
     
-    private final TextStreamAsyncOptions _options;
     private final AsyncByteStreamReader _asyncByteStreamReader;
     private final AsyncCharDecoder _asyncCharDecoder;
     private final AsyncLineSplitter _asyncLineSplitter;
     private final StringRingBuffer _stringRingBuffer;
     private boolean _isEOF;
     private boolean _areLoopsStarted;
-    private StringBuilder _contentBuilder;
 
     /**
      * Constructs a new AsyncTextStreamReader instance to read from the given InputStream.
@@ -96,14 +91,12 @@ public class AsyncTextStreamReader  extends AsyncAgent {
             stringRingBuffer = new StringRingBuffer(textStreamAsyncOptions.stringRingBufferCapacity);
         }
         
-        _options = textStreamAsyncOptions;
         _asyncByteStreamReader = new AsyncByteStreamReader(inputStream, byteRingBuffer, textStreamAsyncOptions);
         _asyncCharDecoder = new AsyncCharDecoder(byteRingBuffer, charRingBuffer, textStreamAsyncOptions);
         _asyncLineSplitter = new AsyncLineSplitter(charRingBuffer, stringRingBuffer, textStreamAsyncOptions);
         _stringRingBuffer = stringRingBuffer;
         _isEOF = false;
         _areLoopsStarted = false;
-        _contentBuilder = null;
     }
 
     /**
@@ -173,42 +166,7 @@ public class AsyncTextStreamReader  extends AsyncAgent {
      */
     @Override
     protected void action() {
-        try {
-            if (_contentBuilder != null) {
-                String line = _stringRingBuffer.read();
-                _contentBuilder.append(line);
-                _contentBuilder.append(_options.lineBreak);
-            }
-        }
-        catch (Throwable ex) {
-            setEOFAndThrow(ex);
-        }
-    }
-    
-    /**
-     * Starts an apply loop and collects the content.
-     *  
-     * @return  A future whose result is the entire content of the input stream.
-     *          Line breaks are adjusted according to the {@link LineAsyncOptions}. 
-     */
-    public CompletableFuture<String> readToEndAsync() {
-        _contentBuilder = new StringBuilder();
-        
-        return startApplyLoopAsync()
-                    .thenApplyAsync(nl -> completeContent());
-    }
-    
-    /**
-     * Completes the read-to-end apply loop by returning the collected content,
-     * clearing the internal content builder.
-     *  
-     * @return  The content from the internal content builder.
-     */
-    private String completeContent() {
-        String content = _contentBuilder.toString();
-        _contentBuilder = null;
-        
-        return content;
+        // Nothing to do.
     }
     
     /**

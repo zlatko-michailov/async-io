@@ -42,11 +42,6 @@ public class AsyncTextStreamReaderTest {
         System.out.println("} // testStartApplyLoopAsync");
     }
 
-    @Test
-    public void testReadToEndAsync() {
-        
-    }
-    
     public void testAsyncAgentMethod(AsyncAgentMethod method) {
         final int STREAM_LENGTH = 101; // Make sure this matches the end of a line!
         final int CHUNK_LENGTH = 7;
