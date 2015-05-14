@@ -33,14 +33,14 @@ Each issue must have a *type* which is one of the following:
 
 The issue must contain at least these 3 sections:
 
-1. REPRO  
+* REPRO  
 The section must contain compilable, simple, code that consistently reproduces the unexpected behavior.
 Additionally, it must contain instructions how to compile and run the repro code.
 
-2. EXPECTED  
+* EXPECTED  
 A description of the expected behavior.
 
-3. ACTUAL  
+* ACTUAL  
 A description of the unexpected behavior.
 An explanation of why the actual behavior is considered unexpected my also be provided.
 
@@ -68,6 +68,14 @@ Investigation includes:
 
 ## Stage 3: Investigating
 The purpose of the investigation is to find the best resolution of this issue.
+
+The outcome of the investigation should be recorded in two new sections:
+
+* PROBLEM  
+This section should contain a description of the cause of the observed behavior.
+
+* SOLUTION  
+This section should contain one or more possible solutions with some elaboration on possible side effects as well as a rough estimate on the cost.
 
 Notice that "investigating" doesn't mean "fixing". 
 While it may be necessary to hack some code to prove your concept for a fix, this is not the stage for a production-quality change.
