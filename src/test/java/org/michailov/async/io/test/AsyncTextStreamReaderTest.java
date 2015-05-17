@@ -58,12 +58,12 @@ public class AsyncTextStreamReaderTest {
         
         switch (method) {
         case APPLY_ASYNC:
+            // Prepare for verification.
+            state.verificationFuture = new CompletableFuture<Void>();
+            
             // Start reader loop.
             state.reader.applyAsync()
                             .thenApplyAsync(nl -> verifyApply(state));
-
-            // Start verification loop.
-            state.verificationFuture = new CompletableFuture<Void>();
             break;
             
         case START_APPLY_LOOP_ASYNC:
