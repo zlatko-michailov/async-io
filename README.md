@@ -1,5 +1,5 @@
 # Summary
-## Async I/O
+## Java Async I/O
 The main purpose of this project is to enable async interaction with the existing, sync, InputStream and OutputStream primitives in Java.
 
 All I/O operations are performed on the ForkJoinPool thread pool. 
@@ -12,38 +12,34 @@ Input operations never block as long as the InputStream implementation correctly
 Output operations are not guaranteed to be non-blocking because OutputStream doesn't report its availability.
 
 ## WhenReady
-This whole async stack is based on a generic facility, WhenReady, that can be used for other kinds of async execution.
+This async stack is based on a generic facility, WhenReady, that can be used for other kinds of async execution.
 
 WhenReady takes a *ready* predicate eventually along with an *action* function, a *result* value, and/or a *done* predicate.
-When the *ready* predicate returns true, it may assign the result, it may execute the action once, or it may start executing 
+When the *ready* predicate returns true, WhenReady may assign the result, it may execute the action once, or it may start executing 
 the action in a loop until the *done* predicate returns true.
 
 
 # Support
-Visit (http://zlatko.michailov.org/search/label/Java%20Async%20I%2FO) where you'll find articles dedicated to this package. 
+Visit (http://zlatko.michailov.org/search/label/Java%20Async%20I%2FO) where you'll find more information about this API. 
 
 
-# Build Sources
+# Building the Sources
 This project uses Gradle to automate the build and test process.
 
     gradle java
     
-## Run Tests
+## Running the Tests
     gradle test
 
-## Prepare for Eclipse
+## Preparing for Eclipse
     gradle eclipse
 
     
-# Download Binaries
-Relatively stable versions are published to the Maven repository.
+# Downloading Binaries
+Released versions *will* be published to the Maven Central Repository.
 Search for:
 
 * Group = michailov
 * Package = async-io
-
-
-# Contribution
-To help make this produc better, please file maningful bugs with clearly described expectations and reliable repro apps.
 
 
