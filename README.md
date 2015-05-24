@@ -19,9 +19,15 @@ When the *ready* predicate returns true, WhenReady may assign the result, it may
 the action in a loop until the *done* predicate returns true.
 
 
-# Support
-Visit (http://zlatko.michailov.org/search/label/Java%20Async%20I%2FO) where you'll find more information about this API. 
+# Documentation
+You'll find articles in the **[docs](docs)** folder in this source tree.
 
+Or, you may jump straight to the **[API Reference](http://zlatko-michailov.github.io/async-io/docs/javadoc/)**
+
+
+# Support
+If you don't find an answer for your question, please send an email to [Zlatko Michailov](mailto:zlatko+asyncio@michailov.org).
+ 
 
 # Building the Sources
 This project uses Gradle to automate the build and test process.
@@ -35,11 +41,3 @@ This project uses Gradle to automate the build and test process.
     gradle eclipse
 
     
-# Downloading Binaries
-Released versions *will* be published to the Maven Central Repository.
-Search for:
-
-* Group = michailov
-* Package = async-io
-
-
