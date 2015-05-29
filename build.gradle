@@ -1,5 +1,6 @@
 apply plugin: 'eclipse'
 apply plugin: 'java'
+apply plugin: 'maven-publish'
 
 
 // ---------------------------------------------------------------------
@@ -61,3 +62,23 @@ test {
         }
     }
 }
+
+
+// ---------------------------------------------------------------------
+// Publishing
+// ---------------------------------------------------------------------
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+    
+    repositories {
+        maven {
+            url "$buildDir/publish/maven"
+        }
+    }
+}
+
+

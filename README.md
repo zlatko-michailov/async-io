@@ -41,3 +41,13 @@ This project uses Gradle to automate the build and test process.
     gradle eclipse
 
     
+# Referencing the Package   
+Include this secton in your build.gradle script:
+    
+    repositories {
+        maven {
+            url "http://zlatko-michailov.github.io/async-io/repo/maven"
+        }
+    }
+
+
