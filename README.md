@@ -42,7 +42,7 @@ This project uses Gradle to automate the build and test process.
 
     
 # Referencing the Package   
-Include this secton in your build.gradle script:
+Include these sectons in your build.gradle script:
     
     repositories {
         maven {
@@ -50,4 +50,8 @@ Include this secton in your build.gradle script:
         }
     }
 
+    dependencies {
+        compile 'michailov:async-io:0.1'
+    }
+    
 
