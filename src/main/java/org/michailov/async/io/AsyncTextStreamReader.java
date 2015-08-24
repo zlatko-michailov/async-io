@@ -17,6 +17,8 @@
 package org.michailov.async.io;
 
 import java.io.*;
+import java.util.function.Consumer;
+
 import org.michailov.async.*;
 
 /**
@@ -48,6 +50,7 @@ public class AsyncTextStreamReader  extends AsyncAgent {
     private final AsyncCharDecoder _asyncCharDecoder;
     private final AsyncLineSplitter _asyncLineSplitter;
     private final StringRingBuffer _stringRingBuffer;
+    private final AsyncRingBufferWatcher<StringRingBuffer> _asyncStringRingBufferWatcher;
     private boolean _isEOF;
     private boolean _areLoopsStarted;
 
@@ -58,7 +61,18 @@ public class AsyncTextStreamReader  extends AsyncAgent {
      * @param   textStreamAsyncOptions      {@link TextStreamAsyncOptions} that will control all async operations on this instance. 
      */
     public AsyncTextStreamReader(InputStream inputStream, TextStreamAsyncOptions textStreamAsyncOptions) {
-        this(inputStream, null, null, null, textStreamAsyncOptions);
+        this(inputStream, null, null, null, null, textStreamAsyncOptions);
+    }
+    
+    /**
+     * Constructs a new AsyncTextStreamReader instance to read from the given InputStream.
+     * 
+     * @param   inputStream                 An InputStream to read from.
+     * @param   onAvailableToRead           A callback to invoke when there are text lines available to read from the string ring buffer.
+     * @param   textStreamAsyncOptions      {@link TextStreamAsyncOptions} that will control all async operations on this instance. 
+     */
+    public AsyncTextStreamReader(InputStream inputStream, Consumer<StringRingBuffer> onAvailableToRead, TextStreamAsyncOptions textStreamAsyncOptions) {
+        this(inputStream, null, null, null, onAvailableToRead, textStreamAsyncOptions);
     }
     
     /**
@@ -71,9 +85,10 @@ public class AsyncTextStreamReader  extends AsyncAgent {
      *                                      In that case, an implicit {@link CharRingBuffer} is created. 
      * @param   stringRingBuffer            A {@link StringRingBuffer} to place lines into. May be {@code null}. 
      *                                      In that case, an implicit {@link StringRingBuffer} is created. 
+     * @param   onAvailableToRead           A callback to invoke when there are text lines available to read from the string ring buffer.
      * @param   textStreamAsyncOptions      {@link TextStreamAsyncOptions} that will control all async operations on this instance. 
      */
-    public AsyncTextStreamReader(InputStream inputStream, ByteRingBuffer byteRingBuffer, CharRingBuffer charRingBuffer, StringRingBuffer stringRingBuffer, TextStreamAsyncOptions textStreamAsyncOptions) {
+    public AsyncTextStreamReader(InputStream inputStream, ByteRingBuffer byteRingBuffer, CharRingBuffer charRingBuffer, StringRingBuffer stringRingBuffer, Consumer<StringRingBuffer> onAvailableToRead, TextStreamAsyncOptions textStreamAsyncOptions) {
         super(textStreamAsyncOptions);
         
         Util.ensureArgumentNotNull("inputStream", inputStream);
@@ -91,10 +106,16 @@ public class AsyncTextStreamReader  extends AsyncAgent {
             stringRingBuffer = new StringRingBuffer(textStreamAsyncOptions.stringRingBufferCapacity);
         }
         
+        AsyncRingBufferWatcher<StringRingBuffer> asyncStringRingBufferWatcher = null;
+        if (onAvailableToRead != null) {
+            asyncStringRingBufferWatcher = new AsyncRingBufferWatcher<StringRingBuffer>(stringRingBuffer, onAvailableToRead, textStreamAsyncOptions);
+        }
+        
         _asyncByteStreamReader = new AsyncByteStreamReader(inputStream, byteRingBuffer, textStreamAsyncOptions);
         _asyncCharDecoder = new AsyncCharDecoder(byteRingBuffer, charRingBuffer, textStreamAsyncOptions);
         _asyncLineSplitter = new AsyncLineSplitter(charRingBuffer, stringRingBuffer, textStreamAsyncOptions);
         _stringRingBuffer = stringRingBuffer;
+        _asyncStringRingBufferWatcher = asyncStringRingBufferWatcher;
         _isEOF = false;
         _areLoopsStarted = false;
     }
@@ -106,6 +127,15 @@ public class AsyncTextStreamReader  extends AsyncAgent {
      */
     public StringRingBuffer getStringRingBuffer() {
         return _stringRingBuffer;
+    }
+    
+    /**
+     * Returns the underlying {@link AsyncRingBufferWatcher} that watches the {@link StringRingBuffer}.
+     * 
+     * @return  The underlying {@link AsyncRingBufferWatcher}, or null if no {@link AsyncRingBufferWatcher} was configured.
+     */
+    public AsyncRingBufferWatcher<StringRingBuffer> getAsyncStringRingBufferWatcher() {
+        return _asyncStringRingBufferWatcher;
     }
     
     /**
@@ -129,6 +159,9 @@ public class AsyncTextStreamReader  extends AsyncAgent {
                 _asyncByteStreamReader.startApplyLoopAsync();
                 _asyncCharDecoder.startApplyLoopAsync();
                 _asyncLineSplitter.startApplyLoopAsync();
+                if (_asyncStringRingBufferWatcher != null) {
+                    _asyncStringRingBufferWatcher.startApplyLoopAsync();
+                }
                 _areLoopsStarted = true;
             }
             

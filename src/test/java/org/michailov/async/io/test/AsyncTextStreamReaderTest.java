@@ -54,10 +54,12 @@ public class AsyncTextStreamReaderTest {
         state.options = new TextStreamAsyncOptions();
         state.options.charset = InputStreamSimulator.CHARSET;
         InputStreamSimulator simulator = new InputStreamSimulator(STREAM_LENGTH, CHUNK_LENGTH, CHUNK_DELAY_MILLIS, TimeUnit.MILLISECONDS);
-        state.reader = new AsyncTextStreamReader(simulator, state.options);
         
         switch (method) {
         case APPLY_ASYNC:
+            // Create a reader without a watcher.
+            state.reader = new AsyncTextStreamReader(simulator, state.options);
+            
             // Prepare for verification.
             state.verificationFuture = new CompletableFuture<Void>();
             
@@ -67,14 +69,12 @@ public class AsyncTextStreamReaderTest {
             break;
             
         case START_APPLY_LOOP_ASYNC:
+            // Create a reader with a watcher.
+            state.reader = new AsyncTextStreamReader(simulator, srb -> onAvailableToRead(state), state.options);
+            
+            // The test is done when the reader is done.
             // Start reader loop.
-            state.reader.startApplyLoopAsync();
-
-            // Start verification loop.
-            Predicate<TestState> ready = st -> !st.reader.isEOF() && st.reader.getStringRingBuffer().getAvailableToRead() > 0;
-            Predicate<TestState> done = st -> st.reader.isEOF();
-            Function<TestState, Void> action = st -> verifyLine(st);
-            state.verificationFuture = WhenReady.startApplyLoopAsync(ready, done, action, state);
+            state.verificationFuture = state.reader.startApplyLoopAsync();
             break;
         }
         
@@ -110,14 +110,18 @@ public class AsyncTextStreamReaderTest {
         return null;
     }
     
-    private static Void verifyLine(TestState state) {
+    private static void onAvailableToRead(TestState state) {
+        while (state.reader.getStringRingBuffer().getAvailableToRead() > 0) {
+            verifyLine(state);
+        }
+    }
+    
+    private static void verifyLine(TestState state) {
         String sx = state.lines[state.stringsPosition];
         String sa = state.reader.getStringRingBuffer().read();
         
         System.out.println(String.format("[%1$d] '%2$s' = '%3$s'", state.stringsPosition++, sx, sa));
         Assert.assertEquals(sx, sa);
-        
-        return null;
     }
 
     private class TestState {
