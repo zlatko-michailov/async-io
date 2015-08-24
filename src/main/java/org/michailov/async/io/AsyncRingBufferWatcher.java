@@ -29,20 +29,20 @@ import org.michailov.async.*;
  * 
  * @author  Zlatko Michailov
  */
-public class AsyncRingBufferWatcher extends AsyncAgent {
+public class AsyncRingBufferWatcher<TRingBuffer extends RingBuffer> extends AsyncAgent {
 
-    private final RingBuffer _ringBuffer;
-    private final Consumer<RingBuffer> _onAvailableToRead;
+    private final TRingBuffer _ringBuffer;
+    private final Consumer<TRingBuffer> _onAvailableToRead;
     private boolean _isEOF;
     
     /**
      * Constructs an AsyncCharDecoder instance over the given ring buffers.
      * 
      * @param ringBuffer            {@link RingBuffer} to watch.
-     * @param onAvailableToRead     callback to invoke when there are items available to read from the ring buffer.
+     * @param onAvailableToRead     A callback to invoke when there are items available to read from the ring buffer.
      * @param asyncOptions          {@link AsyncOptions} to use for all async operations.
      */
-    public AsyncRingBufferWatcher(RingBuffer ringBuffer, Consumer<RingBuffer> onAvailableToRead, AsyncOptions asyncOptions) {
+    public AsyncRingBufferWatcher(TRingBuffer ringBuffer, Consumer<TRingBuffer> onAvailableToRead, AsyncOptions asyncOptions) {
         super(asyncOptions);
         
         Util.ensureArgumentNotNull("ringBuffer", ringBuffer);
@@ -59,7 +59,7 @@ public class AsyncRingBufferWatcher extends AsyncAgent {
      * 
      * @return  The watched ring buffer.
      */
-    public RingBuffer getRingBuffer() {
+    public TRingBuffer getRingBuffer() {
         return _ringBuffer;
     }
     

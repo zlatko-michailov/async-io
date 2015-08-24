@@ -34,7 +34,7 @@ public class AsyncRingBufferWatcherTest {
         TestState state = new TestState();
         state.linesPosition = -1;
         state.ring = new StringRingBuffer(BUFF_LENGTH);
-        AsyncRingBufferWatcher watcher = new AsyncRingBufferWatcher(state.ring, r -> onAvailableToRead(state), AsyncOptions.DEFAULT);
+        AsyncRingBufferWatcher<StringRingBuffer> watcher = new AsyncRingBufferWatcher<StringRingBuffer>(state.ring, r -> onAvailableToRead(state), AsyncOptions.DEFAULT);
         
         // Start the watcher. 
         // When it's done, the test is done.
