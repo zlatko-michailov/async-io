@@ -22,11 +22,11 @@ compileTestJava.options.encoding = 'UTF-8'
 // Packaging
 // ---------------------------------------------------------------------
 def specTitle     = 'Async I/O'
-def specVersion   = '0.1'
+def specVersion   = '0.2'
 def specVendor    = 'Zlatko Michailov <zlatko+async@michailov.org>'
 def implShortName = 'org.michailov.async.io'
 def implTitle     = 'Async I/O'
-def implVersion   = '0.1'
+def implVersion   = '0.2'
 def implVendor    = 'Zlatko Michailov <zlatko+async@michailov.org>'
 def projectGroup  = 'michailov'
 def javaVersion   = '1.8'
