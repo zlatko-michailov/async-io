@@ -69,7 +69,7 @@ public final class Main {
         // See method processTextLines() for details on the processing.
         // Reading will not start until an async loop is explicitly started.
         AsyncTextStreamReader streamReader = new AsyncTextStreamReader(inputStream, ring -> processTextLines(ring, streamWriter), asyncOptions);
-        
+
         // Start the async loop.
         CompletableFuture<Void> streamReaderLoop = streamReader.startApplyLoopAsync();
         
@@ -81,11 +81,18 @@ public final class Main {
         // There may be more than one item/line available.
         // So we should iterate.
         while (ringBuffer.getAvailableToRead() > 0) {
-            // Read one line.
+            // Read one line through the ring buffer.
             String line = ringBuffer.read();
             
             // Write the line through the stream writer's ring buffer.
             streamWriter.getStringRingBuffer().write(line);
+        }
+        
+        // At this point there are no more lines available to read.
+        // If the ring buffer has been flagged as EOF, then the input stream is over.
+        if (ringBuffer.isEOF()) {
+            // Flag the stream writer's ring buffer as EOF.
+            streamWriter.getStringRingBuffer().setEOF();
         }
     }
     

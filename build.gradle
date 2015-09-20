@@ -6,16 +6,28 @@ apply plugin: 'maven-publish'
 // ---------------------------------------------------------------------
 // Compilation
 // ---------------------------------------------------------------------
+sourceSets {
+    demo {
+        java {
+            srcDir 'src/demo/java'
+        }
+    }
+}
+
 repositories {
-   mavenCentral()
+    mavenCentral()
 }
 
 dependencies {
     testCompile 'junit:junit:4.12'
+    demoCompile files("$buildDir/classes/main") {
+        builtBy 'compileJava'
+    }
 }
 
 compileJava.options.encoding = 'UTF-8'
 compileTestJava.options.encoding = 'UTF-8'
+compileDemoJava.options.encoding = 'UTF-8'
 
 
 // ---------------------------------------------------------------------
