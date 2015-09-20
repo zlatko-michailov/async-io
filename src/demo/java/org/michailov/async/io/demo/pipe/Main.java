@@ -44,9 +44,9 @@ public final class Main {
         // That's why we have to wait for the processing to complete 
         // to make sure the process doesn't exit before processing has completed.
         try {
-            demo.wait();
+            demo.get();
         }
-        catch (InterruptedException ex) {
+        catch (Throwable ex) {
             System.err.println(String.format("Unexpected exception:\n%1$s", ex.toString()));
         }
     }

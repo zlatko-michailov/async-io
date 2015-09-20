@@ -20,6 +20,7 @@ repositories {
 
 dependencies {
     testCompile 'junit:junit:4.12'
+    
     demoCompile files("$buildDir/classes/main") {
         builtBy 'compileJava'
     }
@@ -65,12 +66,12 @@ jar {
 // ---------------------------------------------------------------------
 test {
     afterTest { descriptor, result ->
-        def testName = descriptor.getClassName() + " : " + descriptor.getName();
+        def testName = descriptor.getClassName() + ' : ' + descriptor.getName();
         if (result.getFailedTestCount() == 0) {
-            logger.lifecycle("[ Passed ] " + testName);
+            logger.lifecycle('[ Passed ] ' + testName);
         }
         else {
-            logger.lifecycle("[=FAILED=] " + testName);
+            logger.lifecycle('[=FAILED=] ' + testName);
         }
     }
 }
