@@ -55,7 +55,12 @@ public abstract class AsyncAgent {
      */
     public CompletableFuture<Void> applyAsync() {
         ensureMode(WhenReadyMode.ONCE);
-        return WhenReady.applyAsync(READY, ACTION, this, _asyncOptions);
+        CompletableFuture<Void> future = WhenReady.applyAsync(READY, ACTION, this, _asyncOptions);
+        
+        String logMessage = String.format("future=%1$d , class=%2$s , event=CREATE", future.hashCode(), getClass().getName());
+        Logger.getLogger().info(logMessage);
+
+        return future;
     }
     
     /**
@@ -65,7 +70,12 @@ public abstract class AsyncAgent {
      */
     public CompletableFuture<Void> startApplyLoopAsync() {
         ensureMode(WhenReadyMode.LOOP);
-        return WhenReady.startApplyLoopAsync(READY, DONE, ACTION, this, _asyncOptions);
+        CompletableFuture<Void> future = WhenReady.startApplyLoopAsync(READY, DONE, ACTION, this, _asyncOptions);
+
+        String logMessage = String.format("future=%1$d , class=%2$s , event=CREATE", future.hashCode(), getClass().getName());
+        Logger.getLogger().info(logMessage);
+        
+        return future;
     }
     
     /**

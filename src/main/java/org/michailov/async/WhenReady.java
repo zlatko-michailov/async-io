@@ -194,6 +194,9 @@ public final class WhenReady {
         WhenReady.completeAsync(whenReady, args); 
         whenReady.whenCompleteAsync((a, ex) -> applyLoopAsync(future, args, ex));
 
+        String logMessage = String.format("future=%1$d , class=unknown , event=CreateForStartApplyLoop", future.hashCode());
+        Logger.getLogger().fine(logMessage);
+        
         return future;
     }
     
@@ -215,6 +218,9 @@ public final class WhenReady {
         catch (Throwable ex) {
             completeFutureExceptionallySafe(future, ex);
         }
+        
+        String logMessage = String.format("future=%1$d , class=unknown , event=CreateForComplete", future.hashCode());
+        Logger.getLogger().fine(logMessage);
         
         return future;
     }
@@ -244,6 +250,9 @@ public final class WhenReady {
                 }
                 
                 if (args.done.test(args.state)) {
+                    String logMessage = String.format("future=%1$d , class=unknown , event=Done", future.hashCode());
+                    Logger.getLogger().finer(logMessage);
+                    
                     completeFutureSafe(future, result);
                 }
                 
@@ -282,6 +291,9 @@ public final class WhenReady {
     private static<R> void completeFutureSafe(CompletableFuture<R> future, R result) {
         try {
             if (future != null && !future.isDone()) {
+                String logMessage = String.format("future=%1$d , class=unknown , event=COMPLETE", future.hashCode());
+                Logger.getLogger().info(logMessage);
+                
                 future.complete(result);
             }
         }
