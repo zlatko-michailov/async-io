@@ -56,7 +56,7 @@ public class EOFInputStream extends InputStream {
     }
     
     /**
-     * COnstructs a new EOFInputStream.
+     * Constructs a new EOFInputStream.
      * 
      * @param   inputStream     InputStream to override.
      * @param   eof             EOF predicate. Takes a {@link AsyncByteStreamReader} as a parameter.
@@ -73,6 +73,12 @@ public class EOFInputStream extends InputStream {
         _inputStream = inputStream;
         _eof = eof;
         _available = available;
+    }
+    
+    /**
+     * Implicit constructor for derived classes.
+     */
+    protected EOFInputStream() {
     }
     
     /**
