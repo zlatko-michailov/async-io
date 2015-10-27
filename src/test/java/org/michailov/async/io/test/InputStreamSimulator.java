@@ -21,7 +21,7 @@ import java.nio.charset.*;
 import java.util.concurrent.*;
 import org.michailov.async.io.*;
 
-class InputStreamSimulator extends InputStream {
+class InputStreamSimulator extends EOFInputStream {
     
     static final String[] LINES = {
         "",
@@ -82,25 +82,29 @@ class InputStreamSimulator extends InputStream {
     private boolean _isEOF;
 
     InputStreamSimulator(int streamLength, int chunkLength, int delay, TimeUnit unit) {
+        super();
+        
         _delaySimulator = new DelaySimulator(chunkLength, (int)unit.toMillis(delay));
         _streamLength = streamLength;
         _nextStreamIndex = 0;
         _nextContentIndex = 0;
         _isEOF = false;
     }
+    
+    @Override
+    public boolean eof() {
+        if (_nextStreamIndex >= _streamLength) {
+            _isEOF = true;
+        }
+        
+        return _isEOF;
+    }
 
     @Override
     public int available() throws IOException {
-        // If we've already returned EOF, nothing is available.
-        if (_isEOF) {
+        // If we've reached EOF, nothing is available.
+        if (eof()) {
             return 0;
-        }
-        
-        // If we've reached the end of the stream, there are no more bytes available.
-        // However, the caller hasn't gotten an EOF yet. 
-        // Lie to him to come and get the EOF.
-        if (_nextStreamIndex == _streamLength) {
-            return 1;
         }
         
         // If chunking is not enabled, the rest of the entire stream is available.
@@ -115,11 +119,6 @@ class InputStreamSimulator extends InputStream {
     @Override
     public int read() throws IOException {
         int r = readByte();
-        
-        // If we publicly return EOF, set the flag. 
-        if (r == EOF) {
-            _isEOF = true;
-        }
         
         return r;
     }
@@ -136,8 +135,6 @@ class InputStreamSimulator extends InputStream {
             
             if (r == EOF) {
                 if (i == 0) {
-                    // We are publicly returning EOF. Set the flag.
-                    _isEOF = true;
                     return EOF;
                 }
                 else {
@@ -156,6 +153,7 @@ class InputStreamSimulator extends InputStream {
     private int readByte() throws IOException {
         // If we've reached the end of the stream, return EOF.
         if (_nextStreamIndex >= _streamLength) {
+            _isEOF = true;
             return EOF;
         }
         

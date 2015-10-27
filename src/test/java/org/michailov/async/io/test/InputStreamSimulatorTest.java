@@ -39,28 +39,33 @@ public class InputStreamSimulatorTest {
             
             byte[] buff = new byte[BUFF_LENGTH];
             int totalRead = 0;
-            int r = simulator.read(buff, 0, BUFF_LENGTH);
             
-            while (r != -1) {
-                int ax;
+            while (!simulator.eof()) {
+                int r = simulator.read(buff, 0, BUFF_LENGTH);
                 totalRead += r;
-
+                
                 // Reading less than BUFF_LENGTH means we've reached EOF.
                 // We'll be lied to to get the EOF.
+                boolean ex;
+                int ax;
                 if (r < BUFF_LENGTH) {
-                    ax = 1;
+                    ex = true;
+                    ax = 0;
                 }
                 else {
+                    ex = false;
                     ax = (totalRead % CHUNK_LENGTH) == 0 ? 0 : CHUNK_LENGTH - (totalRead % CHUNK_LENGTH); 
                 }
                 
+                // Verify eof
+                boolean e = simulator.eof(); 
+                System.out.println(String.format("EOF: %1$b = %2$b", ex, e));
+                Assert.assertEquals(ex, e);
+                        
                 // Verify available.
                 a = simulator.available();
                 System.out.println(String.format("Available: %1$d = %2$d", ax, a));
                 Assert.assertEquals(ax, a);
-                
-                // Read forward.
-                r = simulator.read(buff, 0, BUFF_LENGTH);
             }
             
             // Verify available
@@ -76,8 +81,9 @@ public class InputStreamSimulatorTest {
             ex.printStackTrace();
             Assert.fail();
         }
-        
-        System.out.println("} // testSimulatorReadBulk");
+        finally {
+            System.out.println("} // testSimulatorReadBulk");
+        }
     }
 
     @Test
@@ -93,34 +99,33 @@ public class InputStreamSimulatorTest {
             int a = simulator.available();
             System.out.println(String.format("Available: %1$d = %2$d", CHUNK_LENGTH, a));
             Assert.assertEquals(CHUNK_LENGTH, a);
-            
-            int i = 0;
-            int r = simulator.read();
-            long currentTimeMillis = System.currentTimeMillis();
-            long lastTimeMillis;
 
-            while (r != -1) {
-                // Verify each read byte.
+            long currentTimeMillis = System.currentTimeMillis();
+            int i = 0;
+            while (!simulator.eof()) {
+                // Read.
+                long lastTimeMillis = currentTimeMillis;
+                int r = simulator.read();
+                currentTimeMillis = System.currentTimeMillis();
+
+                // Verify delay if on chunk boundary.
+                if (i != 0 && (i % CHUNK_LENGTH == 0)) {
+                    System.out.println(String.format("Delay: %1$d >= %2$d", currentTimeMillis - lastTimeMillis, CHUNK_DELAY_MILLIS));
+                    Assert.assertTrue(currentTimeMillis - lastTimeMillis >= CHUNK_DELAY_MILLIS);
+                }
+                
+                // Verify te read byte.
                 System.out.println(String.format("[%1$d] Byte[%2$d]: %3$d = %4$d", System.currentTimeMillis() % 100000, i, InputStreamSimulator.CONTENT_BYTES[i % InputStreamSimulator.CONTENT_BYTES_LENGTH], r));
                 Assert.assertEquals(InputStreamSimulator.CONTENT_BYTES[i % InputStreamSimulator.CONTENT_BYTES_LENGTH], r);
                 
                 // Verify available.
                 a = simulator.available();
-                int ax = ((i + 1) % CHUNK_LENGTH) == 0 ? 0 : (CHUNK_LENGTH - ((i + 1) % CHUNK_LENGTH));
+                int ax = simulator.eof() || ((i + 1) % CHUNK_LENGTH) == 0 ? 0 : (CHUNK_LENGTH - ((i + 1) % CHUNK_LENGTH));
                 System.out.println(String.format("Available: %1$d = %2$d", ax, a));
                 Assert.assertEquals(ax, a);
 
-                // Read forward.
+                // Count the read byte.
                 i++;
-                r = simulator.read();
-                lastTimeMillis = currentTimeMillis;
-                currentTimeMillis = System.currentTimeMillis();
-                
-                // Verify delay if on chunk boundary.
-                if (i % CHUNK_LENGTH == 0) {
-                    System.out.println(String.format("Delay: %1$d >= %2$d", currentTimeMillis - lastTimeMillis, CHUNK_DELAY_MILLIS));
-                    Assert.assertTrue(currentTimeMillis - lastTimeMillis >= CHUNK_DELAY_MILLIS);
-                }
             }
             
             // Verify available
@@ -136,7 +141,8 @@ public class InputStreamSimulatorTest {
             ex.printStackTrace();
             Assert.fail();
         }
-        
-        System.out.println("} // testSimulatorRead1");
+        finally {
+            System.out.println("} // testSimulatorRead1");
+        }
     }
 }
