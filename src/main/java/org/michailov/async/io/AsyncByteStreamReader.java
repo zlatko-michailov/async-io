@@ -17,6 +17,7 @@
 package org.michailov.async.io;
 
 import java.io.*;
+
 import org.michailov.async.*;
 
 /**
@@ -57,6 +58,10 @@ public class AsyncByteStreamReader extends AsyncAgent {
         
         _inputStream = inputStream;
         _byteRingBuffer = byteRingBuffer;
+        
+        if (_inputStream instanceof EOFInputStream) {
+            ((EOFInputStream)_inputStream).setReader(this);
+        }
     }
     
     /**
@@ -83,6 +88,10 @@ public class AsyncByteStreamReader extends AsyncAgent {
      * @return  true iff EOF has been reached or an exception has been encountered.
      */
     public boolean isEOF() {
+        if (_inputStream instanceof EOFInputStream && ((EOFInputStream)_inputStream).eof()) {
+            setEOF();
+        }
+        
         return _byteRingBuffer.isEOF();
     }
 
@@ -144,6 +153,9 @@ public class AsyncByteStreamReader extends AsyncAgent {
      * Marks this instance as 'idle'.
      */
     private void setEOF() {
+        String logMessage = String.format("future=unknown , class=%1$s , event=EOF", getClass().getName());
+        Logger.getLogger().info(logMessage);
+        
         _byteRingBuffer.setEOF();
         setIdle();
     }
@@ -156,6 +168,9 @@ public class AsyncByteStreamReader extends AsyncAgent {
      * @param   ex  An exception to complete with.
      */
     private void setEOFAndThrow(Throwable ex) {
+        String logMessage = String.format("future=unknown , class=%1$s , event=THROW", getClass().getName());
+        Logger.getLogger().info(logMessage);
+        
         _byteRingBuffer.setEOF();
         setIdleAndThrow(ex);
     }
