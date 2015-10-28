@@ -188,6 +188,9 @@ public class AsyncTextStreamWriter extends AsyncAgent {
      * Marks this instance as 'idle'.
      */
     private void setEOF() {
+        String logMessage = String.format("future=unknown , class=%1$s , event=EOF", getClass().getName());
+        Logger.getLogger().info(logMessage);
+        
         _isEOF = true;
         setIdle();
     }
@@ -200,6 +203,9 @@ public class AsyncTextStreamWriter extends AsyncAgent {
      * @param   ex  An exception to complete with.
      */
     private void setEOFAndThrow(Throwable ex) {
+        String logMessage = String.format("future=unknown , class=%1$s , event=THROW", getClass().getName());
+        Logger.getLogger().info(logMessage);
+        
         _isEOF = true;
         setIdleAndThrow(ex);
     }
