@@ -24,7 +24,6 @@ public final class Main {
 
     public static void main(String[] args) {
         // Parse the command line options.
-        // There is only one option - whether the stream should be processed as text or as bytes.
         // Upon error, this call will return null.
         CommandLineOptions commandLineOptions = CommandLineOptions.fromArgs(args);
         if (commandLineOptions == null) {
@@ -49,6 +48,8 @@ public final class Main {
         catch (Throwable ex) {
             System.err.println(String.format("Unexpected exception:\n%1$s", ex.toString()));
         }
+        
+        System.exit(0);
     }
     
     private static CompletableFuture<Void> demoTextAsync(InputStream inputStream, OutputStream outputStream) {
@@ -73,8 +74,13 @@ public final class Main {
         // Start the async loop.
         CompletableFuture<Void> streamReaderLoop = streamReader.startApplyLoopAsync();
         
-        // Return a new future that completes when all the required futures have completed.
-        return CompletableFuture.allOf(streamReaderLoop, streamWriterLoop);
+        // When the read loop is complete, set the output StringRingBUffer as EOF
+        // which will trigger EOF down the write chain, and will ultimately complete the write loop.
+        streamReaderLoop.whenCompleteAsync((v, ex) -> { streamWriter.getStringRingBuffer().setEOF(); });
+        
+        // While we have 2 futures, we know that the read loop will have to complete in order for the write loop to complete.
+        // That's why we can safely consider the write future to be the only one we need to wait for.
+        return streamWriterLoop;
     }
     
     private static void processTextLines(StringRingBuffer ringBuffer, AsyncTextStreamWriter streamWriter) {
@@ -101,40 +107,69 @@ public final class Main {
     }
     
     final static class CommandLineOptions {
+        StreamProcessingLevel streamProcessingLevel;
+        
+        String command;
+        
         InputStream inputStream;
         
         OutputStream outputStream;
         
-        StreamProcessingLevel streamProcessingLevel;
-        
         private CommandLineOptions() {
-            inputStream = System.in;
-            outputStream = System.out;
             streamProcessingLevel = StreamProcessingLevel.TEXT;
+            outputStream = System.out;
         }
         
         static CommandLineOptions fromArgs(String[] args) {
-            CommandLineOptions options = new CommandLineOptions();
-            if (args != null) {
-                for (int i = 0; i < args.length; i++) {
-                    if (args[i] == "-t") {
+            // There must be at least 1 argument - a command.
+            if (args != null && args.length >= 1) {
+                CommandLineOptions options = new CommandLineOptions();
+                
+                for (int i = 0; i < args.length - 1; i++) {
+                    System.err.println(String.format("%1$d: '%2$s'.", i, args[i]));
+                    
+                    if (args[i].equals("-t")) {
+                        System.err.println("\ttext");
                         options.streamProcessingLevel = StreamProcessingLevel.TEXT;
                     }
-                    else if (args[i] == "-b") {
+                    else if (args[i].equals("-b")) {
+                        System.err.println("\tbytes");
                             options.streamProcessingLevel = StreamProcessingLevel.BYTE;
                     }
                     else {
                         System.err.println(String.format("Unexpected option '%1$s'.", args[i]));
-                        System.err.println("Possible options:");
-                        System.err.println("\t-t (default) to process the stream as text.");
-                        System.err.println("\t-b to process the stream as bytes.");
-
+                        
+                        printUsage();
                         return null;
                     }
                 }
+                
+                // Execute the command and get its stdout.
+                options.command = args[args.length - 1];
+                try {
+                    Process process = Runtime.getRuntime().exec(options.command);
+                    options.inputStream = EOFInputStream.fromProcess(process);
+                }
+                catch (Throwable ex) {
+                    System.err.println(String.format("Failed to execute command '%1$s'.", options.command));
+                    System.err.println(ex.toString());
+                    
+                    printUsage();
+                    return null;
+                }
+                
+                return options;
             }
             
-            return options;
+            return null;
+        }
+        
+        static void printUsage() {
+            System.err.println("Usage:");
+            System.err.println("\t[-t|-b] command:");
+            System.err.println("\t-t (default) to process the stream as text.");
+            System.err.println("\t-b to process the stream as bytes.");
+            System.err.println("\tcommand to execute");
         }
     }
     

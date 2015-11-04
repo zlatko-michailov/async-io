@@ -168,7 +168,6 @@ public class EOFInputStream extends InputStream {
      */
     private static boolean eofProcess(AsyncByteStreamReader byteReader, Process process) {
         try {
-            System.err.println(String.format("+++ avail=%1$d alive=%2$b +++", byteReader.getInputStream().available(), process.isAlive())); // TODO: remove.
             return byteReader.getInputStream().available() == 0 && !process.isAlive();
         }
         catch (Throwable ex) {
