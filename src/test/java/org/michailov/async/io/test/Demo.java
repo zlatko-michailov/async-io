@@ -67,7 +67,38 @@ public class Demo {
     
     @Test
     public void demoReadFile() {
+        // Reference a file from this codebase relatively,
+        // so that it works on all operating systems.
+        String path = "build.gradle";
         
+        // Obtain an EOFInputStream from the process.
+        EOFInputStream inputStream;
+        try {
+            File file = new File(path);
+            inputStream = EOFInputStream.fromFile(file);
+        }
+        catch (Throwable ex) {
+            Assert.fail(String.format("Failed to open file '%1$s'.", path));
+            Assert.fail(ex.toString());
+            return;
+        }
+        
+        // Read the EOFInputStream and write it to StdOut.
+        OutputStream outputStream = System.out;
+        CompletableFuture<Void> readFuture = readInputStreamAsync(inputStream, outputStream);
+        
+        // In general, we can continue with other work.
+        // In this simple demo, there is no other work.
+        // That's why we have to wait for the processing to complete 
+        // to make sure the process doesn't exit before processing has completed.
+        try {
+            readFuture.get();
+        }
+        catch (Throwable ex) {
+            Assert.fail("Failed to complete the async read.");
+            Assert.fail(ex.toString());
+            return;
+        }
     }
     
     private static CompletableFuture<Void> readInputStreamAsync(EOFInputStream inputStream, OutputStream outputStream) {
