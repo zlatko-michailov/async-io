@@ -11,6 +11,7 @@
 [Ring Buffer](RingBuffer.md)  
 [Async Ring Buffer Watcher](AsyncRingBufferWatcher.md)  
 [Async I/O Principles](IOPrinciples.md)  
+[EOFInputStream](EOFInputStream.md)  
 [Input Stack Async Agents](InputStack.md)  
 [Output Stack Async Agents](OutputStack.md)
 
