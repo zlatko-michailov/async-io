@@ -56,28 +56,28 @@ public class AsyncTextStreamReader  extends AsyncAgent {
     /**
      * Constructs a new AsyncTextStreamReader instance to read from the given InputStream.
      * 
-     * @param   inputStream                 An InputStream to read from.
+     * @param   inputStream                 An EOFInputStream to read from.
      * @param   textStreamAsyncOptions      {@link TextStreamAsyncOptions} that will control all async operations on this instance. 
      */
-    public AsyncTextStreamReader(InputStream inputStream, TextStreamAsyncOptions textStreamAsyncOptions) {
+    public AsyncTextStreamReader(EOFInputStream inputStream, TextStreamAsyncOptions textStreamAsyncOptions) {
         this(inputStream, null, null, null, null, textStreamAsyncOptions);
     }
     
     /**
      * Constructs a new AsyncTextStreamReader instance to read from the given InputStream.
      * 
-     * @param   inputStream                 An InputStream to read from.
+     * @param   inputStream                 An EOFInputStream to read from.
      * @param   onAvailableToRead           A callback to invoke when there are text lines available to read from the string ring buffer.
      * @param   textStreamAsyncOptions      {@link TextStreamAsyncOptions} that will control all async operations on this instance. 
      */
-    public AsyncTextStreamReader(InputStream inputStream, Consumer<StringRingBuffer> onAvailableToRead, TextStreamAsyncOptions textStreamAsyncOptions) {
+    public AsyncTextStreamReader(EOFInputStream inputStream, Consumer<StringRingBuffer> onAvailableToRead, TextStreamAsyncOptions textStreamAsyncOptions) {
         this(inputStream, null, null, null, onAvailableToRead, textStreamAsyncOptions);
     }
     
     /**
      * Constructs a new AsyncTextStreamReader instance to read from the given InputStream.
      * 
-     * @param   inputStream                 An InputStream to read from.
+     * @param   inputStream                 An EOFInputStream to read from.
      * @param   byteRingBuffer              A {@link ByteRingBuffer} to write bytes to. May be {@code null}. 
      *                                      In that case, an implicit {@link ByteRingBuffer} is created. 
      * @param   charRingBuffer              A {@link CharRingBuffer} to decode chars into. May be {@code null}. 
@@ -87,7 +87,7 @@ public class AsyncTextStreamReader  extends AsyncAgent {
      * @param   onAvailableToRead           A callback to invoke when there are text lines available to read from the string ring buffer.
      * @param   textStreamAsyncOptions      {@link TextStreamAsyncOptions} that will control all async operations on this instance. 
      */
-    public AsyncTextStreamReader(InputStream inputStream, ByteRingBuffer byteRingBuffer, CharRingBuffer charRingBuffer, StringRingBuffer stringRingBuffer, Consumer<StringRingBuffer> onAvailableToRead, TextStreamAsyncOptions textStreamAsyncOptions) {
+    public AsyncTextStreamReader(EOFInputStream inputStream, ByteRingBuffer byteRingBuffer, CharRingBuffer charRingBuffer, StringRingBuffer stringRingBuffer, Consumer<StringRingBuffer> onAvailableToRead, TextStreamAsyncOptions textStreamAsyncOptions) {
         super(textStreamAsyncOptions);
         
         Util.ensureArgumentNotNull("inputStream", inputStream);

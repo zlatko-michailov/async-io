@@ -142,14 +142,6 @@ public class Demo {
             // Write the line through the stream writer's ring buffer.
             streamWriter.getStringRingBuffer().write(line);
         }
-        
-        // TODO: TODO: TODO: REMOVE
-        // At this point there are no more lines available to read.
-        // If the ring buffer has been flagged as EOF, then the input stream is over.
-        if (ringBuffer.isEOF()) {
-            // Flag the stream writer's ring buffer as EOF.
-            streamWriter.getStringRingBuffer().setEOF();
-        }
     }
 
 }

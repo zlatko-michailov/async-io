@@ -17,7 +17,6 @@
 package org.michailov.async.io;
 
 import java.io.*;
-
 import org.michailov.async.*;
 
 /**
@@ -39,18 +38,18 @@ import org.michailov.async.*;
  */
 public class AsyncByteStreamReader extends AsyncAgent {
     
-    private final InputStream _inputStream;
+    private final EOFInputStream _inputStream;
     private final ByteRingBuffer _byteRingBuffer;
     
     /**
      * Constructs a new AsyncByteStreamReader instance to read from the given InputStream
      * into the given {@link ByteRingBuffer}.
      * 
-     * @param   inputStream     An InputStream to read from.
+     * @param   inputStream     An EOFInputStream to read from.
      * @param   byteRingBuffer  A {@link ByteRingBuffer} to write to.
      * @param   asyncOptions    {@link AsyncOptions} that will control all async operations on this instance. 
      */
-    public AsyncByteStreamReader(InputStream inputStream, ByteRingBuffer byteRingBuffer, AsyncOptions asyncOptions) {
+    public AsyncByteStreamReader(EOFInputStream inputStream, ByteRingBuffer byteRingBuffer, AsyncOptions asyncOptions) {
         super(asyncOptions);
         
         Util.ensureArgumentNotNull("inputStream", inputStream);
@@ -59,9 +58,7 @@ public class AsyncByteStreamReader extends AsyncAgent {
         _inputStream = inputStream;
         _byteRingBuffer = byteRingBuffer;
         
-        if (_inputStream instanceof EOFInputStream) {
-            ((EOFInputStream)_inputStream).setReader(this);
-        }
+        _inputStream.setReader(this);
     }
     
     /**
@@ -69,7 +66,7 @@ public class AsyncByteStreamReader extends AsyncAgent {
      * 
      * @return  The underlying InputStream.
      */
-    public InputStream getInputStream() {
+    public EOFInputStream getInputStream() {
         return _inputStream;
     }
     
@@ -88,7 +85,7 @@ public class AsyncByteStreamReader extends AsyncAgent {
      * @return  true iff EOF has been reached or an exception has been encountered.
      */
     public boolean isEOF() {
-        if (_inputStream instanceof EOFInputStream && ((EOFInputStream)_inputStream).eof()) {
+        if (_inputStream.eof()) {
             setEOF();
         }
         
