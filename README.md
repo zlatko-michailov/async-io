@@ -51,7 +51,7 @@ Include these sectons in your build.gradle script:
     }
 
     dependencies {
-        compile 'michailov:async-io:0.1'
+        compile 'michailov:async-io:0.4'
     }
     
 

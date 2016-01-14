@@ -35,11 +35,11 @@ compileDemoJava.options.encoding = 'UTF-8'
 // Packaging
 // ---------------------------------------------------------------------
 def specTitle     = 'Async I/O'
-def specVersion   = '0.3'
+def specVersion   = '0.4'
 def specVendor    = 'Zlatko Michailov <zlatko+async@michailov.org>'
 def implShortName = 'org.michailov.async.io'
 def implTitle     = 'Async I/O'
-def implVersion   = '0.3'
+def implVersion   = '0.4'
 def implVendor    = 'Zlatko Michailov <zlatko+async@michailov.org>'
 def projectGroup  = 'michailov'
 def javaVersion   = '1.8'
