@@ -16,11 +16,10 @@
 
 package org.michailov.async.io;
 
-import java.io.*;
 import org.michailov.async.*;
 
 /**
- * Asynchronous byte reader over a plain old InputStream.
+ * Asynchronous byte reader over a plain old InputStream wrapped in an {@link EOFInputStream}.
  * The reader doesn't block as long as the stream correctly reports its available bytes.
  * <p>
  * The reader reads available bytes from the stream if there are any. 
@@ -30,6 +29,7 @@ import org.michailov.async.*;
  * <p>
  * Note: The caller is responsible for opening and closing the stream as needed. 
  * 
+ * @see     EOFInputStream
  * @see     WhenReady
  * @see     AsyncAgent
  * @see     ByteRingBuffer
